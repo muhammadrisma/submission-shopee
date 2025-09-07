@@ -17,8 +17,9 @@ def run_command(command: str, description: str) -> bool:
     print("-" * 50)
 
     try:
+        cmd_list = command.split()
         result = subprocess.run(
-            command, shell=True, check=True, capture_output=False, text=True
+            cmd_list, check=True, capture_output=False, text=True
         )
         print(f"✅ {description} - PASSED")
         return True
@@ -31,15 +32,15 @@ def run_command(command: str, description: str) -> bool:
 def check_requirements():
     """Check if required tools are installed."""
     tools = {
-        "python": "python --version",
-        "docker": "docker --version",
-        "pip": "pip --version",
+        "python": ["python", "--version"],
+        "docker": ["docker", "--version"],
+        "pip": ["pip", "--version"],
     }
 
     missing_tools = []
     for tool, command in tools.items():
         try:
-            subprocess.run(command, shell=True, check=True, capture_output=True)
+            subprocess.run(command, check=True, capture_output=True)
             print(f"✅ {tool} is available")
         except subprocess.CalledProcessError:
             print(f"❌ {tool} is not available")

@@ -1,6 +1,33 @@
+# CSV Preprocessing
+- **csv_parser_clean.py**: "python scripts\csv_parser_clean.py"
+- **simple_chunking.py**: "scripts\simple_chunking.py"
+
+## How It Works
+- Split the CSV into **chunks** (e.g., 100k rows).  
+- Load and process each chunk, then discard or save.  
+- Keeps memory low by only handling part of the data at once.  
+
+## Benefits
+- **Efficient** – Low RAM usage.  
+- **Scalable** – Works with very large datasets.  
+- **Flexible** – Filter, aggregate, or transform per chunk.  
+- **Optimized** – Convert chunks to Parquet or other formats.  
+
+
 # Food Receipt Analyzer
 
 A comprehensive AI-powered system for digitizing, analyzing, and querying food receipts using computer vision and natural language processing.
+
+## 🎯 Overview
+
+The Food Receipt Analyzer transforms physical food receipts into searchable digital data using advanced computer vision and AI technologies. Upload receipt images, extract structured data automatically, and query your food purchase history using natural language.
+
+### Key Features
+- **Computer Vision OCR**: Automatic text extraction from receipt images
+- **AI-Powered Queries**: Natural language search of your food purchase history  
+- **Data Analytics**: Spending insights and purchase pattern analysis
+- **Web Interface**: Modern Streamlit-based user interface
+- **Containerized Deployment**: Docker support for easy deployment
 
 ## 📁 Project Structure
 
@@ -93,7 +120,7 @@ food-receipt-analyzer/
 git clone <repository-url>
 cd food-receipt-analyzer
 
-# Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
 
 # Install Tesseract OCR (required for text extraction)
@@ -115,13 +142,42 @@ cp .env.example .env
 
 ### 3. Run the Application
 
+#### Option A: OCR Chatbot (Main Application)
 ```bash
-# Start the Streamlit app
+# Start the Streamlit web interface
 streamlit run app.py
 
 # Or use the convenience script
 python run_app.py
+
+# Access at: http://localhost:8501
 ```
+
+#### Option B: CSV Processing (Batch Processing)
+```bash
+# Process CSV files with chunked processing
+python scripts/csv_parser_clean.py
+
+# Or use the simple chunking utility
+python scripts/simple_chunking.py
+```
+
+### 4. Usage Workflows
+
+#### OCR Chatbot Workflow
+1. **Upload Receipt**: Drag and drop receipt images (JPG, PNG, PDF)
+2. **Review Extraction**: Verify extracted data (store, date, items, prices)
+3. **Save to Database**: Confirm and store receipt data
+4. **Query with Natural Language**: Ask questions like:
+   - "What food did I buy yesterday?"
+   - "How much did I spend on groceries last week?"
+   - "Where did I buy hamburgers from?"
+
+#### CSV Processing Workflow
+1. **Prepare CSV Data**: Ensure CSV files are in the `data/` directory
+2. **Run Processing**: Execute chunked processing scripts
+3. **Review Results**: Check processed data in the database
+4. **Query Data**: Use the web interface to search processed data
 
 ## 🧪 Testing
 
@@ -251,6 +307,62 @@ STREAMLIT_PORT=8501
 - **Supported formats**: JPG, JPEG, PNG, PDF
 - **Image validation**: Size, format, and content validation
 
+## 🚀 Deployment
+
+### Local Development
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Run application
+python run_app.py
+```
+
+### Docker Deployment
+```bash
+# Build container
+docker build -t receipt-analyzer .
+
+# Run container
+docker run -p 8501:8501 \
+  -e OPENROUTER_API_KEY=your_key \
+  -v $(pwd)/data:/app/data \
+  receipt-analyzer
+```
+
+### Docker Compose
+```bash
+# Configure environment
+cp .env.example .env
+# Edit .env with your settings
+
+# Start services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+```
+
+### Production Deployment
+```bash
+# Use production compose file
+docker-compose -f docker-compose.prod.yml up -d
+
+# Or build and deploy manually
+docker build -t receipt-analyzer:latest .
+docker run -d \
+  --name receipt-analyzer \
+  --restart unless-stopped \
+  -p 8501:8501 \
+  -e OPENROUTER_API_KEY=your_key \
+  -v /path/to/data:/app/data \
+  receipt-analyzer:latest
+```
+
 ## 🤝 Development
 
 ### Code Structure
@@ -269,9 +381,22 @@ STREAMLIT_PORT=8501
 
 ## 📖 Documentation
 
+### Core Documentation
+- **[Installation Guide](docs/INSTALLATION.md)**: Detailed installation instructions for all platforms
+- **[API Documentation](docs/API_DOCUMENTATION.md)**: Comprehensive internal service API reference
+- **[Environment Variables](docs/ENVIRONMENT_VARIABLES.md)**: Complete configuration guide
 - **[Error Handling Guide](docs/ERROR_HANDLING.md)**: Comprehensive error handling documentation
-- **[Installation Guide](docs/INSTALLATION.md)**: Detailed installation instructions
-- **API Documentation**: Inline code documentation with examples
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**: Solutions to common issues
+
+### Process Documentation
+- **[Project Structure](docs/PROJECT_STRUCTURE.md)**: Codebase organization and architecture
+- **[CI/CD Guide](docs/CI_CD_GUIDE.md)**: Continuous integration and deployment setup
+- **[Folder Reorganization](docs/FOLDER_REORGANIZATION.md)**: Project structure evolution
+
+### Additional Guides
+- **[Vector Search Guide](docs/VECTOR_SEARCH_GUIDE.md)**: Semantic similarity search implementation
+- **[Streamlit README](docs/STREAMLIT_README.md)**: Web interface documentation
+- **[Quick Start Guide](docs/QUICK_START.md)**: Get up and running quickly
 
 ## 🐛 Troubleshooting
 

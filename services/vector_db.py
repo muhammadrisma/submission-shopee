@@ -5,9 +5,9 @@ Built from scratch without high-level libraries for semantic search of food item
 
 import json
 import math
-import pickle
 import re
 import sqlite3
+import struct
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -185,12 +185,15 @@ class CustomVectorDB:
             conn.commit()
 
     def _serialize_vector(self, vector: List[float]) -> bytes:
-        """Serialize vector to bytes for storage."""
-        return pickle.dumps(vector)
+        """Serialize vector to bytes for storage using safe binary format."""
+        # Use struct to safely serialize floats
+        return struct.pack(f'{len(vector)}f', *vector)
 
     def _deserialize_vector(self, data: bytes) -> List[float]:
-        """Deserialize vector from bytes."""
-        return pickle.loads(data)
+        """Deserialize vector from bytes using safe binary format."""
+        # Calculate number of floats from data length
+        num_floats = len(data) // 4  # 4 bytes per float
+        return list(struct.unpack(f'{num_floats}f', data))
 
     def _save_vectorizer_state(self):
         """Save vectorizer state to database."""

@@ -8,3 +8,8 @@ requests>=2.31.0
 python-dotenv>=1.0.0
 Pillow>=10.0.0
 libmagic
+colorama>=0.4.6
+black 
+isort 
+flake8
+bandit>=1.7.5

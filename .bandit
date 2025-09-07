@@ -1,6 +1,6 @@
 [bandit]
-exclude_dirs = ["tests", "debug", "demos", ".venv", "venv"]
-skips = ["B101", "B601"]
+exclude_dirs = tests,debug,demos,.venv,venv
+skips = B101,B601
 
 # B101: Test for use of assert
 # B601: Test for shell injection within Paramiko

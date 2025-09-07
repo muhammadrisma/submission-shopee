@@ -1,137 +1,233 @@
 # Quick Start Guide - Food Receipt Analyzer
 
-## 🚀 Get Started in 5 Minutes
+## 🚀 Get Running in 5 Minutes
 
-### 1. Check Your Installation
+This guide will get you up and running with the Food Receipt Analyzer in just a few minutes.
+
+## Prerequisites
+
+- Python 3.8 or higher
+- Git (for cloning the repository)
+- Internet connection (for AI queries)
+
+## Step 1: Clone and Setup
+
 ```bash
-python check_installation.py
-```
+# Clone the repository
+git clone <repository-url>
+cd food-receipt-analyzer
 
-### 2. Install Missing Dependencies
+# Create virtual environment (recommended)
+python -m venv venv
 
-**If you see "Tesseract OCR" error:**
-- **Windows:** See `INSTALL_TESSERACT_WINDOWS.md`
-- **macOS:** `brew install tesseract`
-- **Linux:** `sudo apt install tesseract-ocr`
+# Activate virtual environment
+# Windows:
+venv\Scripts\activate
+# macOS/Linux:
+source venv/bin/activate
 
-**If you see Python dependency errors:**
-```bash
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Configure the Application
+## Step 2: Install Tesseract OCR
+
+### Windows
+1. Download from: https://github.com/UB-Mannheim/tesseract/wiki
+2. Run installer and add to PATH
+3. Verify: `tesseract --version`
+
+### macOS
 ```bash
-# Copy example configuration
+brew install tesseract
+```
+
+### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install tesseract-ocr
+```
+
+## Step 3: Configure Environment
+
+```bash
+# Copy environment template
 cp .env.example .env
 
-# Edit .env file and add your OpenRouter API key (optional for AI queries)
-# OPENROUTER_API_KEY=your_api_key_here
+# Edit .env file (use your preferred editor)
+nano .env  # Linux/macOS
+notepad .env  # Windows
 ```
 
-### 4. Run the Application
+**Minimum required configuration:**
+```env
+# Get your free API key from https://openrouter.ai/
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 
-**Option 1: Python script (recommended)**
+# Optional: Set Tesseract path if not in PATH
+# TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
+```
+
+## Step 4: Run the Application
+
 ```bash
+# Start the application
 python run_app.py
+
+# Or use Streamlit directly
+streamlit run app.py
 ```
 
-**Option 2: Windows batch file (if PATH issues)**
-```cmd
-run_app.bat
+The application will start and be available at: http://localhost:8501
+
+## Step 5: Test with Sample Receipt
+
+1. **Upload a Receipt**:
+   - Click "Browse files" or drag and drop a receipt image
+   - Supported formats: JPG, PNG, PDF
+   - Maximum size: 10MB
+
+2. **Review Extracted Data**:
+   - Check the extracted store name, date, and items
+   - Verify prices and totals are correct
+   - Edit any incorrect information
+
+3. **Save to Database**:
+   - Click "Save Receipt" to store the data
+   - Receipt will be added to your database
+
+4. **Query Your Data**:
+   - Try natural language queries like:
+     - "What food did I buy yesterday?"
+     - "How much did I spend this week?"
+     - "Where did I buy milk?"
+
+## Quick Test Commands
+
+### Verify Installation
+```bash
+# Check all dependencies
+python scripts/check_installation.py
+
+# Test individual components
+python -c "import streamlit; print('Streamlit OK')"
+python -c "import pytesseract; print('Tesseract OK')"
+python -c "from config import config; print('Config OK')"
 ```
 
-**Option 3: Manual PATH setup**
-```cmd
-set "PATH=C:\Program Files\Tesseract-OCR;%PATH%"
-python run_app.py
+### Run Demos
+```bash
+# Test computer vision
+python demos/demo_computer_vision.py
+
+# Test AI queries
+python demos/demo_ai_query.py
+
+# Test database operations
+python demos/demo_database.py
 ```
 
-The application will open in your browser at `http://localhost:8501`
+## Common Quick Fixes
 
-## 📱 Using the Application
+### Tesseract Not Found
+```bash
+# Find Tesseract location
+which tesseract  # macOS/Linux
+where tesseract  # Windows
 
-### Upload a Receipt
-1. Click "📤 Upload Receipt" in the sidebar
-2. Drag and drop or click to select a receipt image
-3. Click "🔍 Process Receipt"
-4. View the extracted data
+# Add to .env file
+echo "TESSERACT_CMD=/path/to/tesseract" >> .env
+```
 
-### Ask Questions
-1. Click "🤖 Ask Questions" in the sidebar
-2. Type questions like:
-   - "What food did I buy yesterday?"
-   - "How much did I spend last week?"
-   - "Where did I buy milk?"
-3. Get AI-powered answers about your receipts
+### API Key Issues
+```bash
+# Test API key
+curl -H "Authorization: Bearer YOUR_API_KEY" \
+     https://openrouter.ai/api/v1/models
 
-### View Analytics
-1. Click "📊 Dashboard" to see spending analytics
-2. View recent purchases and trends
+# Should return list of available models
+```
 
-## 🔧 Troubleshooting
+### Port Already in Use
+```bash
+# Use different port
+streamlit run app.py --server.port 8502
 
-### Common Issues
+# Or set in .env
+echo "STREAMLIT_PORT=8502" >> .env
+```
 
-**"Tesseract not found"**
-- Install Tesseract OCR (see installation guides)
-- Make sure it's in your system PATH
+## Docker Quick Start
 
-**"OpenRouter API request failed"**
-- Add your API key to the .env file
-- AI queries are optional - upload still works without it
+If you prefer Docker:
 
-**"Database error"**
-- Check if the `data/` folder exists and is writable
-- The app will create the database automatically
+```bash
+# Build and run with Docker Compose
+cp .env.example .env
+# Edit .env with your API key
+docker-compose up -d
 
-**"Upload folder missing"**
-- The app creates this automatically
-- Check folder permissions
+# View logs
+docker-compose logs -f
 
-### Get Help
-1. Run `python check_installation.py` for diagnostics
-2. Check the Settings page in the app for status
-3. View detailed guides in `INSTALLATION.md`
+# Access at http://localhost:8501
+```
 
-## 🎯 What You Can Do
+## Sample Queries to Try
 
-✅ **Upload receipt images** (JPG, PNG, PDF)  
-✅ **Extract text and data** automatically  
-✅ **Store receipts** in local database  
-✅ **Ask natural language questions** about your purchases  
-✅ **View spending analytics** and trends  
-✅ **Search by store, date, or item**  
+Once you have some receipts uploaded, try these queries:
 
-## 📁 Supported File Types
+### Basic Queries
+- "What did I buy today?"
+- "Show me yesterday's purchases"
+- "List all my receipts"
 
-- **Images:** JPG, JPEG, PNG
-- **Documents:** PDF (first page)
-- **Max size:** 10MB per file
+### Spending Analysis
+- "How much did I spend this week?"
+- "What's my total spending this month?"
+- "Show me my most expensive purchase"
 
-## 🤖 Example Questions
+### Item Searches
+- "Where did I buy milk?"
+- "When did I last buy bread?"
+- "Show me all dairy products"
 
-Try asking these questions after uploading some receipts:
+### Store Queries
+- "What stores have I shopped at?"
+- "How much did I spend at Walmart?"
+- "Show me receipts from Target"
 
-- "What did I buy at Walmart yesterday?"
-- "How much did I spend on food last week?"
-- "Show me all my grocery purchases from Target"
-- "What stores did I shop at this month?"
-- "Find all receipts with milk"
-- "Total spending in the last 30 days"
+## Next Steps
 
-## 🔑 API Key (Optional)
+### Explore Features
+- Upload multiple receipts to build your database
+- Try different types of natural language queries
+- Explore the analytics and insights features
 
-For AI-powered natural language queries, get a free API key:
+### Customize Configuration
+- Adjust file size limits in `.env`
+- Configure logging levels
+- Set up custom upload folders
 
-1. Sign up at https://openrouter.ai/
-2. Get your API key from the dashboard
-3. Add to `.env` file:
-   ```
-   OPENROUTER_API_KEY=your_key_here
-   ```
+### Advanced Usage
+- Check out the API documentation for programmatic access
+- Explore the demo scripts for advanced features
+- Review the troubleshooting guide for optimization tips
 
-**Note:** The app works without an API key - you just won't have AI query features.
+## Getting Help
 
-## 🎉 You're Ready!
+If you encounter issues:
 
-Your Food Receipt Analyzer is now ready to use. Start by uploading your first receipt!
+1. **Check the logs** in the Streamlit interface
+2. **Run the installation checker**: `python scripts/check_installation.py`
+3. **Review the troubleshooting guide**: `docs/TROUBLESHOOTING.md`
+4. **Test individual components** using the demo scripts
+
+## What's Next?
+
+- **[Full Documentation](../README.md)**: Complete feature overview
+- **[API Documentation](API_DOCUMENTATION.md)**: Internal service APIs
+- **[Troubleshooting Guide](TROUBLESHOOTING.md)**: Common issues and solutions
+- **[Environment Variables](ENVIRONMENT_VARIABLES.md)**: Complete configuration guide
+
+You're now ready to start digitizing and analyzing your food receipts! 🎉

@@ -121,11 +121,15 @@ class DatabaseManager:
 
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
-
+            allowed_tables = {'receipts', 'receipt_items', 'item_vectors', 'vectorizer_state'}
+            
             table_counts = {}
             for table in tables:
-                cursor.execute(f"SELECT COUNT(*) FROM {table}")
-                table_counts[table] = cursor.fetchone()[0]
+                if table in allowed_tables:
+                    cursor.execute(f"SELECT COUNT(*) FROM [{table}]")
+                    table_counts[table] = cursor.fetchone()[0]
+                else:
+                    table_counts[table] = 0
 
             return {
                 "database_path": self.db_path,

@@ -43,6 +43,9 @@ def main():
             break
 
     try:
+        # Use localhost by default for security, allow override via environment
+        server_address = os.environ.get("STREAMLIT_SERVER_ADDRESS", "127.0.0.1")
+        
         cmd = [
             sys.executable,
             "-m",
@@ -52,11 +55,13 @@ def main():
             "--server.port",
             str(config.STREAMLIT_PORT),
             "--server.address",
-            "0.0.0.0",
+            server_address,
         ]
 
-        print(f"🚀 Starting server on port {config.STREAMLIT_PORT}")
+        print(f"🚀 Starting server on {server_address}:{config.STREAMLIT_PORT}")
         print(f"📁 Upload folder: {config.get_upload_path()}")
+        if server_address == "0.0.0.0":
+            print("⚠️  Server bound to all interfaces - ensure firewall is configured")
 
         if config.OPENROUTER_API_KEY:
             print("✅ AI queries enabled")
