@@ -60,11 +60,9 @@ def test_database():
         from database.service import db_service
         from models.receipt import Receipt, ReceiptItem
 
-        # Initialize database
         db_manager.initialize_database()
         print("✅ Database initialized")
 
-        # Test basic operations
         stats = db_service.get_database_stats()
         print(f"✅ Database stats: {stats['receipt_count']} receipts")
 

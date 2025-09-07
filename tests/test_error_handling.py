@@ -68,7 +68,6 @@ class TestErrorHandler:
 
     def test_error_statistics_tracking(self):
         """Test error statistics tracking."""
-        # Generate some errors
         self.error_handler.handle_error(ValueError("Error 1"))
         self.error_handler.handle_error(ValidationError("Error 2", "field"))
         self.error_handler.handle_error(ValueError("Error 3"))
@@ -77,7 +76,6 @@ class TestErrorHandler:
 
         assert stats["total_errors"] == 3
         assert len(stats["recent_errors"]) == 3
-        # Check that errors were tracked (exact keys may vary due to error conversion)
         assert stats["total_errors"] > 0
         assert len(stats["error_counts"]) > 0
 
@@ -128,7 +126,7 @@ class TestRetryMechanism:
                 failing_function, retry_on=(requests.exceptions.RequestException,)
             )
 
-        assert call_count == 1  # No retries
+        assert call_count == 1
 
 
 class TestFileValidator:
@@ -140,7 +138,6 @@ class TestFileValidator:
 
     def test_valid_image_file(self):
         """Test validation of a valid image file."""
-        # Create a small test image
         img = Image.new("RGB", (100, 100), color="red")
         img_bytes = io.BytesIO()
         img.save(img_bytes, format="JPEG")
@@ -156,9 +153,8 @@ class TestFileValidator:
 
     def test_file_too_large(self):
         """Test validation failure for oversized files."""
-        # Create a mock file object that reports large size
         mock_file = Mock()
-        mock_file.size = 2 * 1024 * 1024  # 2MB
+        mock_file.size = 2 * 1024 * 1024
         mock_file.name = "large.jpg"
 
         with pytest.raises(ValidationError) as exc_info:
@@ -291,7 +287,6 @@ class TestComputerVisionErrorHandling:
         """Test handling of corrupted image files."""
         mock_imread.return_value = None
 
-        # Create a temporary file
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
             temp_file.write(b"fake image data")
             temp_path = temp_file.name
@@ -311,7 +306,6 @@ class TestComputerVisionErrorHandling:
 
         mock_version.side_effect = TesseractNotFoundError()
 
-        # Create a small test image
         img = Image.new("RGB", (100, 100), color="white")
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
             img.save(temp_file.name, "JPEG")
@@ -389,9 +383,8 @@ class TestUploadInterfaceErrorHandling:
 
     def test_file_validation_error(self):
         """Test handling of file validation errors."""
-        # Create a mock file that's too large
         mock_file = Mock()
-        mock_file.size = 20 * 1024 * 1024  # 20MB
+        mock_file.size = 20 * 1024 * 1024
         mock_file.name = "large.jpg"
 
         result = self.upload_interface._validate_uploaded_file(mock_file)
@@ -409,8 +402,6 @@ class TestUploadInterfaceErrorHandling:
             recovery_suggestions=["Try a clearer image"],
         )
 
-        # This would be tested in the context of Streamlit app
-        # For now, just verify the error is properly structured
         assert mock_process.side_effect.user_message == "Could not extract text"
         assert "Try a clearer image" in mock_process.side_effect.recovery_suggestions
 
@@ -423,7 +414,7 @@ class TestReceiptValidator:
         receipt_data = {
             "store_name": "Test Store",
             "receipt_date": "2024-01-15",
-            "total_amount": "22.00",  # Close to items total to account for tax
+            "total_amount": "22.00",
             "items": [
                 {
                     "item_name": "Test Item",
@@ -445,7 +436,7 @@ class TestReceiptValidator:
             "item_name": "Test Item",
             "quantity": 2,
             "unit_price": "10.00",
-            "total_price": "25.00",  # Should be 20.00
+            "total_price": "25.00",
         }
 
         with pytest.raises(ValidationError) as exc_info:
@@ -459,13 +450,10 @@ class TestReceiptValidator:
 
         items = [{"total_price": Decimal("10.00")}, {"total_price": Decimal("15.00")}]
 
-        # This should raise a warning for significant mismatch
         with pytest.raises(ValidationError) as exc_info:
-            ReceiptValidator.validate_total_consistency(
-                50.00, items
-            )  # Items sum to 25.00
+            ReceiptValidator.validate_total_consistency(50.00, items)
 
-        assert exc_info.value.severity == ErrorSeverity.LOW  # Should be low severity
+        assert exc_info.value.severity == ErrorSeverity.LOW
 
 
 if __name__ == "__main__":

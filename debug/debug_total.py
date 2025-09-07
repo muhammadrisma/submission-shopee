@@ -7,14 +7,13 @@ import re
 
 from services.computer_vision import ReceiptParser
 
-# Sample text from your receipt
 sample_text = """🧾 Receipt Details
 Store: Burrito Bar – Authentic Mexican Joint
 Address: 900 Kirkwood Ave, West Hollywood, CA
 Date: 12/14/2018
 Time: 11:43 AM
 Host: Maura
-Order #: 391
+Order
 
 🍽️ Items Purchased
 Chicken Burrito — $8.79
@@ -38,7 +37,6 @@ def debug_total_extraction():
     print("💰 Debugging Total Extraction")
     print("=" * 50)
 
-    # Test each total pattern
     for i, pattern in enumerate(parser.total_patterns):
         print(f"Pattern {i+1}: {pattern}")
 
@@ -49,14 +47,12 @@ def debug_total_extraction():
             print(f"  ❌ No matches")
         print()
 
-    # Test the actual total extraction
     print("🧾 Actual Total Extraction:")
     print("=" * 50)
 
     total = parser._extract_total(sample_text)
     print(f"Extracted total: ${total:.2f}")
 
-    # Test specific lines
     print("\n🎯 Testing Specific Lines:")
     print("=" * 50)
 

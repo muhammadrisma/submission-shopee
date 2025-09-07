@@ -70,7 +70,6 @@ class OpenRouterClient:
         temperature: float = 0.1,
     ) -> Dict[str, Any]:
         """Send a chat completion request to OpenRouter."""
-        # Validate API key
         if not self.api_key:
             raise ConfigurationError(
                 message="OpenRouter API key not configured",
@@ -81,7 +80,6 @@ class OpenRouterClient:
                 ],
             )
 
-        # Validate messages
         if not messages or not isinstance(messages, list):
             raise AIServiceError(
                 message="Invalid messages format",
@@ -107,7 +105,6 @@ class OpenRouterClient:
                 timeout=30,
             )
 
-            # Handle HTTP errors
             if response.status_code == 401:
                 raise AIServiceError(
                     message="Invalid API key",
@@ -138,7 +135,6 @@ class OpenRouterClient:
 
             response.raise_for_status()
 
-            # Parse response
             try:
                 response_data = response.json()
             except json.JSONDecodeError as e:
@@ -151,7 +147,6 @@ class OpenRouterClient:
                     ],
                 )
 
-            # Validate response structure
             if "choices" not in response_data or not response_data["choices"]:
                 raise AIServiceError(
                     message="No choices in API response",
@@ -246,15 +241,12 @@ class QueryParser:
         Parse natural language query and extract intent and parameters.
         Returns a dictionary with query type, parameters, and metadata.
         """
-        # Validate and clean query
         query = text_validator.validate_query(query)
         query_lower = query.lower().strip()
 
-        # Check for semantic search intent first
         if any(word in query_lower for word in self.semantic_keywords):
             return self._parse_semantic_query(query_lower)
 
-        # Determine query intent
         if any(word in query_lower for word in ["what", "which", "show", "list"]):
             if any(
                 word in query_lower
@@ -271,9 +263,7 @@ class QueryParser:
         if any(word in query_lower for word in ["where", "store", "shop"]):
             return self._parse_store_query(query_lower)
 
-        # Default fallback
-        # Check if this might be a semantic search query
-        if len(query_lower.split()) <= 5:  # Short queries are likely semantic
+        if len(query_lower.split()) <= 5:
             return {
                 "intent": "semantic_search",
                 "query": query,
@@ -337,14 +327,11 @@ class QueryParser:
 
     def _parse_semantic_query(self, query: str) -> Dict[str, Any]:
         """Parse queries asking for semantic similarity."""
-        # Extract the item/concept they're looking for
         search_term = query
 
-        # Remove semantic keywords to get the core search term
         for keyword in self.semantic_keywords:
             search_term = search_term.replace(keyword, "").strip()
 
-        # Remove common words
         common_words = ["to", "for", "items", "food", "things", "stuff"]
         for word in common_words:
             search_term = search_term.replace(word, "").strip()
@@ -367,21 +354,18 @@ class QueryParser:
         """Extract date information from query."""
         result = {}
 
-        # Check for "last X days" pattern first (more specific)
         days_match = re.search(r"last\s+(\d+)\s+days?", query)
         if days_match:
             days = int(days_match.group(1))
             result["days_back"] = days
             return result
 
-        # Check for "from last X days" pattern
         from_days_match = re.search(r"from\s+last\s+(\d+)\s+days?", query)
         if from_days_match:
             days = int(from_days_match.group(1))
             result["days_back"] = days
             return result
 
-        # Check for year patterns like "in 2018", "from 2018"
         year_match = re.search(r"(?:in|from)\s+(\d{4})", query)
         if year_match:
             year = int(year_match.group(1))
@@ -393,7 +377,6 @@ class QueryParser:
             except ValueError:
                 pass
 
-        # Check for relative date patterns
         for pattern, date_func in self.date_patterns.items():
             if pattern in query:
                 date_result = date_func()
@@ -403,7 +386,6 @@ class QueryParser:
                     result["specific_date"] = date_result
                 return result
 
-        # Check for specific date patterns (e.g., "20 June", "June 20", "2024-06-20")
         date_match = re.search(
             r"(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)",
             query,
@@ -429,7 +411,6 @@ class QueryParser:
             month = month_map.get(month_name)
             if month:
                 try:
-                    # Assume current year if not specified
                     target_date = date(date.today().year, month, day)
                     result["specific_date"] = target_date
                     return result
@@ -440,7 +421,6 @@ class QueryParser:
 
     def _extract_item_name(self, query: str) -> Optional[str]:
         """Extract item name from query."""
-        # Look for patterns like "buy hamburger", "bought pizza", etc.
         item_patterns = [
             r"buy\s+(\w+)",
             r"bought\s+(\w+)",
@@ -541,7 +521,6 @@ class SQLQueryGenerator:
             return items
 
         elif params.get("days_back"):
-            # Get all items from the last N days
             end_date = date.today()
             start_date = end_date - timedelta(days=params["days_back"])
             receipts = self.db_service.get_receipts_by_date_range(start_date, end_date)
@@ -560,7 +539,6 @@ class SQLQueryGenerator:
                     )
             return items
 
-        # Fallback: if no date parameters, return all items
         receipts = self.db_service.get_all_receipts()
         items = []
         for receipt in receipts:
@@ -643,21 +621,18 @@ class SQLQueryGenerator:
         if not search_term:
             return []
 
-        # Ensure vector index is built
         stats = vector_db.get_stats()
         if stats["vector_count"] == 0:
             vector_db.build_index()
 
-        # Perform semantic search
         results = vector_db.semantic_search(search_term, top_k=10)
 
-        # Convert to standard format
         formatted_results = []
         for result in results:
             formatted_results.append(
                 {
                     "item_name": result.item_name,
-                    "quantity": 1,  # Default quantity
+                    "quantity": 1,
                     "unit_price": result.metadata.get("price", 0),
                     "total_price": result.metadata.get("price", 0),
                     "store_name": result.metadata.get("store_name", "Unknown"),
@@ -703,7 +678,6 @@ class ResponseFormatter:
         if len(results) == 0:
             return "I couldn't find any food items matching your query."
 
-        # Group items by date for better presentation
         items_by_date = {}
         for item in results:
             date_key = item["receipt_date"]
@@ -715,7 +689,6 @@ class ResponseFormatter:
         total_items = len(results)
 
         if len(items_by_date) == 1:
-            # Single date
             date_key = list(items_by_date.keys())[0]
             response_parts.append(f"On {date_key.strftime('%B %d, %Y')}, you bought:")
             for item in items_by_date[date_key]:
@@ -723,7 +696,6 @@ class ResponseFormatter:
                     f"• {item['item_name']} (${item['total_price']:.2f}) from {item['store_name']}"
                 )
         else:
-            # Multiple dates
             response_parts.append(f"Here are the {total_items} food items you bought:")
             for date_key in sorted(items_by_date.keys(), reverse=True):
                 response_parts.append(f"\n{date_key.strftime('%B %d, %Y')}:")
@@ -768,7 +740,6 @@ class ResponseFormatter:
         if len(results) == 0:
             return "I couldn't find any similar items matching your search."
 
-        # Group items by similarity score ranges
         high_similarity = [r for r in results if r.get("similarity_score", 0) > 0.5]
         medium_similarity = [
             r for r in results if 0.3 < r.get("similarity_score", 0) <= 0.5
@@ -792,7 +763,7 @@ class ResponseFormatter:
             else:
                 response_parts.append(f"Found {len(medium_similarity)} similar items:")
 
-            for item in medium_similarity[:3]:  # Limit to top 3
+            for item in medium_similarity[:3]:
                 similarity = item.get("similarity_score", 0)
                 response_parts.append(
                     f"• {item['item_name']} (similarity: {similarity:.1%}) - ${item['total_price']:.2f} from {item['store_name']}"
@@ -829,7 +800,6 @@ class ResponseFormatter:
     ) -> str:
         """Format general response using AI."""
         try:
-            # Use AI to format the response naturally
             system_prompt = """You are a helpful assistant that formats database query results into natural language responses about food receipts and purchases. 
             Be conversational, helpful, and concise. Focus on the key information the user is asking about."""
 
@@ -849,7 +819,6 @@ class ResponseFormatter:
             return response["choices"][0]["message"]["content"].strip()
 
         except Exception as e:
-            # Fallback to simple formatting
             return f"I found {len(results)} results for your query, but had trouble formatting the response. Please try rephrasing your question."
 
     def _format_no_results_response(
@@ -909,16 +878,12 @@ class AIQueryService:
         start_time = time.time()
 
         try:
-            # Validate query first
             query = text_validator.validate_query(query)
 
-            # Parse the query
             parsed_query = self.query_parser.parse_query(query)
 
-            # Generate database results
             results = self.sql_generator.generate_query_results(parsed_query)
 
-            # Format the response
             formatted_response = self.response_formatter.format_response(
                 query, results, parsed_query
             )
@@ -937,7 +902,6 @@ class AIQueryService:
         except Exception as e:
             execution_time = time.time() - start_time
 
-            # Use error handler to get structured error response
             error_response = error_handler.handle_error(e, context={"query": query})
 
             return {
@@ -972,7 +936,6 @@ class AIQueryService:
         ]
 
 
-# Global AI query service instance
 ai_query_service = None
 
 

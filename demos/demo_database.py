@@ -7,7 +7,6 @@ Shows how to use the data models and database service.
 import sys
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -23,12 +22,10 @@ def main():
     """Demonstrate database functionality."""
     print("=== Food Receipt Analyzer Database Demo ===\n")
 
-    # Initialize database
     print("1. Initializing database...")
     initialize_database()
     print("   ✓ Database initialized with schema\n")
 
-    # Create sample receipt items
     print("2. Creating sample receipt items...")
     items = [
         ReceiptItem("Red Apple", 3, Decimal("1.25"), Decimal("3.75")),
@@ -43,7 +40,6 @@ def main():
         )
     print()
 
-    # Create sample receipt
     print("3. Creating sample receipt...")
     receipt = Receipt(
         store_name="Fresh Market",
@@ -60,19 +56,16 @@ def main():
     print(f"   Items: {len(receipt.items)}")
     print(f"   Total consistency: {receipt.validate_total_consistency()}\n")
 
-    # Save receipt to database
     print("4. Saving receipt to database...")
     receipt_id = db_service.save_receipt(receipt)
     print(f"   ✓ Receipt saved with ID: {receipt_id}\n")
 
-    # Retrieve receipt from database
     print("5. Retrieving receipt from database...")
     retrieved_receipt = db_service.get_receipt_by_id(receipt_id)
     print(f"   ✓ Retrieved receipt: {retrieved_receipt.store_name}")
     print(f"   Items retrieved: {len(retrieved_receipt.items)}")
     print(f"   First item: {retrieved_receipt.items[0].item_name}\n")
 
-    # Search for items
     print("6. Searching for items...")
     apple_results = db_service.search_items_by_name("Apple")
     print(f"   Found {len(apple_results)} items matching 'Apple':")
@@ -82,17 +75,14 @@ def main():
         )
     print()
 
-    # Get total spending
     print("7. Getting total spending for date...")
     total_spending = db_service.get_total_spending_by_date(date(2024, 1, 15))
     print(f"   Total spending on 2024-01-15: ${total_spending}\n")
 
-    # Get stores that sell specific items
     print("8. Finding stores that sell milk...")
     milk_stores = db_service.get_stores_with_item("Milk")
     print(f"   Stores selling milk: {milk_stores}\n")
 
-    # Get database statistics
     print("9. Database statistics...")
     stats = db_service.get_database_stats()
     print(f"   Total receipts: {stats['receipt_count']}")
@@ -102,7 +92,6 @@ def main():
         f"   Date range: {stats['date_range']['earliest']} to {stats['date_range']['latest']}\n"
     )
 
-    # Create another receipt for demonstration
     print("10. Adding another receipt...")
     receipt2 = Receipt(
         store_name="Corner Store",
@@ -117,7 +106,6 @@ def main():
     receipt2_id = db_service.save_receipt(receipt2)
     print(f"   ✓ Second receipt saved with ID: {receipt2_id}\n")
 
-    # Search across multiple receipts
     print("11. Searching across all receipts...")
     all_apples = db_service.search_items_by_name("Apple")
     print(f"   Found {len(all_apples)} apple items across all receipts:")
@@ -127,7 +115,6 @@ def main():
         )
     print()
 
-    # Get receipts by date range
     print("12. Getting receipts by date range...")
     receipts_in_range = db_service.get_receipts_by_date_range(
         date(2024, 1, 14), date(2024, 1, 17)

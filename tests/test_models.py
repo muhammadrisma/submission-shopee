@@ -74,8 +74,8 @@ class TestReceiptItem(unittest.TestCase):
         item = ReceiptItem(
             item_name="Apple",
             quantity=1,
-            unit_price=1.50,  # float
-            total_price="1.50",  # string
+            unit_price=1.50,
+            total_price="1.50",
         )
 
         self.assertIsInstance(item.unit_price, Decimal)
@@ -158,7 +158,7 @@ class TestReceipt(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             Receipt(
                 store_name="Test Store",
-                receipt_date="2024-01-15",  # string instead of date
+                receipt_date="2024-01-15",
                 total_amount=Decimal("5.25"),
             )
         self.assertIn(
@@ -190,7 +190,7 @@ class TestReceipt(unittest.TestCase):
         receipt = Receipt(
             store_name="Test Store",
             receipt_date=date(2024, 1, 15),
-            total_amount=5.25,  # float
+            total_amount=5.25,
         )
 
         self.assertIsInstance(receipt.total_amount, Decimal)
@@ -235,7 +235,6 @@ class TestReceipt(unittest.TestCase):
 
     def test_receipt_validate_total_consistency(self):
         """Test validation of total consistency with items."""
-        # Consistent total
         receipt = Receipt(
             store_name="Test Store",
             receipt_date=date(2024, 1, 15),
@@ -245,11 +244,9 @@ class TestReceipt(unittest.TestCase):
 
         self.assertTrue(receipt.validate_total_consistency())
 
-        # Inconsistent total (beyond tolerance)
         receipt.total_amount = Decimal("10.00")
         self.assertFalse(receipt.validate_total_consistency())
 
-        # Within tolerance (2 cents)
         receipt.total_amount = Decimal("5.27")
         self.assertTrue(receipt.validate_total_consistency())
 

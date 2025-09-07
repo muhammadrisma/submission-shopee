@@ -33,17 +33,14 @@ class ReceiptItem:
         if self.quantity <= 0:
             raise ValueError("Quantity must be greater than 0")
 
-        # Clean item name
         self.item_name = self.item_name.strip()
 
-        # Ensure prices are properly formatted Decimal objects
         if not isinstance(self.unit_price, Decimal):
             self.unit_price = Decimal(str(self.unit_price)).quantize(Decimal("0.01"))
 
         if not isinstance(self.total_price, Decimal):
             self.total_price = Decimal(str(self.total_price)).quantize(Decimal("0.01"))
 
-        # Validate prices after conversion
         if self.unit_price < 0:
             raise ValueError("Unit price cannot be negative")
 
@@ -79,7 +76,6 @@ class Receipt:
         """Validate the receipt data after initialization."""
         self._validate()
 
-        # Set upload timestamp if not provided
         if self.upload_timestamp is None:
             self.upload_timestamp = datetime.now()
 
@@ -94,16 +90,13 @@ class Receipt:
         if self.total_amount < 0:
             raise ValueError("Total amount cannot be negative")
 
-        # Clean store name
         self.store_name = self.store_name.strip()
 
-        # Ensure total_amount is properly formatted Decimal
         if not isinstance(self.total_amount, Decimal):
             self.total_amount = Decimal(str(self.total_amount)).quantize(
                 Decimal("0.01")
             )
 
-        # Validate items if present
         for item in self.items:
             if not isinstance(item, ReceiptItem):
                 raise ValueError("All items must be ReceiptItem instances")
@@ -122,9 +115,8 @@ class Receipt:
     def validate_total_consistency(self) -> bool:
         """Check if the receipt total matches the sum of item totals."""
         items_total = self.calculate_items_total()
-        # Allow for small rounding differences
         difference = abs(self.total_amount - items_total)
-        return difference <= Decimal("0.02")  # 2 cent tolerance
+        return difference <= Decimal("0.02")
 
     def to_dict(self) -> dict:
         """Convert receipt to dictionary."""
@@ -146,7 +138,6 @@ class Receipt:
     @classmethod
     def from_dict(cls, data: dict) -> "Receipt":
         """Create Receipt instance from dictionary."""
-        # Parse date strings back to date objects
         receipt_date = None
         if data.get("receipt_date"):
             if isinstance(data["receipt_date"], str):
@@ -161,7 +152,6 @@ class Receipt:
             else:
                 upload_timestamp = data["upload_timestamp"]
 
-        # Create receipt items
         items = []
         for item_data in data.get("items", []):
             items.append(

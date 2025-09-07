@@ -12,7 +12,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from PIL import Image
 
-# Try to import magic, but handle gracefully if not available
 try:
     import magic
 
@@ -57,16 +56,12 @@ class FileValidator:
         """
         filename = filename or getattr(file_obj, "name", "unknown")
 
-        # Check file size
         self._validate_file_size(file_obj, filename)
 
-        # Check file extension
         self._validate_file_extension(filename)
 
-        # Check MIME type
         self._validate_mime_type(file_obj, filename)
 
-        # Validate image if it's an image file
         if self._is_image_file(filename):
             self._validate_image_content(file_obj, filename)
 
@@ -152,20 +147,15 @@ class FileValidator:
     def _validate_image_content(self, file_obj, filename: str):
         """Validate image content and integrity."""
         try:
-            # Reset file pointer
             file_obj.seek(0)
 
-            # Try to open and verify the image
             with Image.open(file_obj) as img:
-                # Verify image can be loaded
                 img.verify()
 
-                # Reset and check basic properties
                 file_obj.seek(0)
                 with Image.open(file_obj) as img:
                     width, height = img.size
 
-                    # Check minimum dimensions
                     if width < 50 or height < 50:
                         raise ValidationError(
                             message=f"Image '{filename}' is too small ({width}x{height})",
@@ -177,7 +167,6 @@ class FileValidator:
                             ],
                         )
 
-                    # Check maximum dimensions
                     if width > 10000 or height > 10000:
                         raise ValidationError(
                             message=f"Image '{filename}' is too large ({width}x{height})",
@@ -189,7 +178,6 @@ class FileValidator:
                             ],
                         )
 
-            # Reset file pointer for later use
             file_obj.seek(0)
 
         except ValidationError:
@@ -211,11 +199,10 @@ class FileValidator:
         if hasattr(file_obj, "size"):
             return file_obj.size
 
-        # For file-like objects, seek to end and get position
         current_pos = file_obj.tell()
-        file_obj.seek(0, 2)  # Seek to end
+        file_obj.seek(0, 2)
         size = file_obj.tell()
-        file_obj.seek(current_pos)  # Reset position
+        file_obj.seek(current_pos)
         return size
 
     def _get_file_extension(self, filename: str) -> str:
@@ -225,28 +212,23 @@ class FileValidator:
     def _get_mime_type(self, file_obj) -> str:
         """Get MIME type of file."""
         try:
-            # Reset file pointer
             file_obj.seek(0)
 
-            # Read first 2048 bytes for magic number detection
             header = file_obj.read(2048)
             file_obj.seek(0)
 
-            # Use python-magic if available
             if MAGIC_AVAILABLE:
                 try:
                     mime_type = magic.from_buffer(header, mime=True)
                     return mime_type
                 except Exception:
-                    pass  # Fall through to other methods
+                    pass
 
-            # Fallback to mimetypes based on filename
             if hasattr(file_obj, "name"):
                 mime_type, _ = mimetypes.guess_type(file_obj.name)
                 if mime_type:
                     return mime_type
 
-            # Default fallback based on header magic numbers
             if header.startswith(b"\xff\xd8\xff"):
                 return "image/jpeg"
             elif header.startswith(b"\x89PNG\r\n\x1a\n"):
@@ -299,7 +281,6 @@ class TextValidator:
 
         query = query.strip()
 
-        # Check length
         if len(query) < 3:
             raise ValidationError(
                 message="Query too short",
@@ -322,7 +303,6 @@ class TextValidator:
                 ],
             )
 
-        # Check for potentially harmful content
         suspicious_patterns = [
             r"<script[^>]*>",
             r"javascript:",
@@ -408,13 +388,11 @@ class DataValidator:
         """
         try:
             if isinstance(price, str):
-                # Remove currency symbols and whitespace
                 price_str = re.sub(r"[$,\s]", "", price.strip())
                 price_decimal = Decimal(price_str)
             else:
                 price_decimal = Decimal(str(price))
 
-            # Check for negative prices
             if price_decimal < 0:
                 raise ValidationError(
                     message="Price cannot be negative",
@@ -426,7 +404,6 @@ class DataValidator:
                     ],
                 )
 
-            # Check for unreasonably high prices
             if price_decimal > Decimal("10000"):
                 raise ValidationError(
                     message=f"Price too high: ${price_decimal}",
@@ -438,7 +415,6 @@ class DataValidator:
                     ],
                 )
 
-            # Round to 2 decimal places
             return price_decimal.quantize(Decimal("0.01"))
 
         except (InvalidOperation, ValueError) as e:
@@ -527,7 +503,6 @@ class DataValidator:
             result_date = date_value.date()
         elif isinstance(date_value, str):
             try:
-                # Try common date formats
                 for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%Y-%m-%d %H:%M:%S"]:
                     try:
                         parsed = datetime.strptime(date_value.strip(), fmt)
@@ -555,7 +530,6 @@ class DataValidator:
                 user_message="Invalid date value",
             )
 
-        # Check date range
         today = date.today()
         min_date = date(2000, 1, 1)
         max_date = date(today.year + 1, 12, 31)
@@ -606,25 +580,21 @@ class ReceiptValidator:
         """
         validated_data = {}
 
-        # Validate store name
         if "store_name" in receipt_data:
             validated_data["store_name"] = TextValidator.validate_store_name(
                 receipt_data["store_name"]
             )
 
-        # Validate date
         if "receipt_date" in receipt_data:
             validated_data["receipt_date"] = DataValidator.validate_date(
                 receipt_data["receipt_date"]
             )
 
-        # Validate total amount
         if "total_amount" in receipt_data:
             validated_data["total_amount"] = DataValidator.validate_price(
                 receipt_data["total_amount"]
             )
 
-        # Validate items
         if "items" in receipt_data:
             validated_items = []
             for i, item in enumerate(receipt_data["items"]):
@@ -638,7 +608,6 @@ class ReceiptValidator:
 
             validated_data["items"] = validated_items
 
-            # Validate total consistency
             if "total_amount" in validated_data:
                 ReceiptValidator.validate_total_consistency(
                     validated_data["total_amount"], validated_items
@@ -651,38 +620,32 @@ class ReceiptValidator:
         """Validate individual receipt item."""
         validated_item = {}
 
-        # Validate item name
         if "item_name" in item_data:
             validated_item["item_name"] = TextValidator.validate_item_name(
                 item_data["item_name"]
             )
 
-        # Validate quantity
         if "quantity" in item_data:
             validated_item["quantity"] = DataValidator.validate_quantity(
                 item_data["quantity"]
             )
 
-        # Validate unit price
         if "unit_price" in item_data:
             validated_item["unit_price"] = DataValidator.validate_price(
                 item_data["unit_price"]
             )
 
-        # Validate total price
         if "total_price" in item_data:
             validated_item["total_price"] = DataValidator.validate_price(
                 item_data["total_price"]
             )
 
-        # Validate price consistency
         if all(
             key in validated_item for key in ["quantity", "unit_price", "total_price"]
         ):
             expected_total = validated_item["quantity"] * validated_item["unit_price"]
             actual_total = validated_item["total_price"]
 
-            # Allow small rounding differences
             if abs(expected_total - actual_total) > Decimal("0.02"):
                 raise ValidationError(
                     message=f"Price inconsistency: {validated_item['quantity']} × ${validated_item['unit_price']} ≠ ${actual_total}",
@@ -701,15 +664,11 @@ class ReceiptValidator:
         """Validate that receipt total matches sum of items."""
         items_total = sum(item.get("total_price", Decimal("0")) for item in items)
 
-        # Convert to Decimal for consistent calculation
         total_amount = Decimal(str(total_amount))
         items_total = Decimal(str(items_total))
 
-        # Allow reasonable difference for tax, discounts, etc.
         difference = abs(total_amount - items_total)
-        max_difference = max(
-            total_amount * Decimal("0.15"), Decimal("5.00")
-        )  # 15% or $5
+        max_difference = max(total_amount * Decimal("0.15"), Decimal("5.00"))
 
         if difference > max_difference:
             raise ValidationError(
@@ -721,11 +680,10 @@ class ReceiptValidator:
                     "Verify individual item prices",
                     "This might be normal for receipts with tax",
                 ],
-                severity=ErrorSeverity.LOW,  # This is often normal
+                severity=ErrorSeverity.LOW,
             )
 
 
-# Global validator instances
 file_validator = FileValidator()
 text_validator = TextValidator()
 data_validator = DataValidator()

@@ -64,7 +64,6 @@ class ValidationError(ApplicationError):
     """Error for validation failures."""
 
     def __init__(self, message: str, field: str = None, **kwargs):
-        # Extract severity if provided, otherwise use default
         severity = kwargs.pop("severity", ErrorSeverity.LOW)
 
         super().__init__(
@@ -175,23 +174,18 @@ class ErrorHandler:
         Returns:
             Dictionary with error information and recovery suggestions
         """
-        # Convert to ApplicationError if needed
         if not isinstance(error, ApplicationError):
             app_error = self._convert_to_application_error(error)
         else:
             app_error = error
 
-        # Add context
         if context:
             app_error.context.update(context)
 
-        # Log the error
         self._log_error(app_error, log_level)
 
-        # Track error statistics
         self._track_error(app_error)
 
-        # Generate response
         return self._generate_error_response(app_error)
 
     def _convert_to_application_error(self, error: Exception) -> ApplicationError:
@@ -199,7 +193,6 @@ class ErrorHandler:
         error_message = str(error)
         error_type = type(error).__name__
 
-        # Classify error based on type and message
         if isinstance(error, (FileNotFoundError, PermissionError, OSError)):
             return FileSystemError(
                 message=f"{error_type}: {error_message}",
@@ -265,7 +258,6 @@ class ErrorHandler:
 
         self.logger.log(log_level, log_message)
 
-        # Log stack trace for high severity errors
         if error.severity in [ErrorSeverity.HIGH, ErrorSeverity.CRITICAL]:
             self.logger.error(f"Stack trace: {traceback.format_exc()}")
 
@@ -274,7 +266,6 @@ class ErrorHandler:
         error_key = f"{error.category.value}:{type(error).__name__}"
         self.error_counts[error_key] = self.error_counts.get(error_key, 0) + 1
 
-        # Keep error history
         self.last_errors.append(
             {
                 "timestamp": error.timestamp,
@@ -285,7 +276,6 @@ class ErrorHandler:
             }
         )
 
-        # Limit history size
         if len(self.last_errors) > self.max_error_history:
             self.last_errors = self.last_errors[-self.max_error_history :]
 
@@ -312,7 +302,7 @@ class ErrorHandler:
         """Get error statistics for monitoring."""
         return {
             "error_counts": self.error_counts,
-            "recent_errors": self.last_errors[-10:],  # Last 10 errors
+            "recent_errors": self.last_errors[-10:],
             "total_errors": sum(self.error_counts.values()),
         }
 
@@ -375,7 +365,6 @@ class RetryMechanism:
                 )
                 time.sleep(delay)
 
-        # This should never be reached, but just in case
         raise last_exception
 
     def _calculate_delay(self, attempt: int) -> float:
@@ -385,7 +374,7 @@ class RetryMechanism:
         if self.jitter:
             import random
 
-            delay *= 0.5 + random.random() * 0.5  # Add 0-50% jitter
+            delay *= 0.5 + random.random() * 0.5
 
         return delay
 
@@ -410,10 +399,8 @@ def with_error_handling(
             try:
                 return func(*args, **kwargs)
             except ApplicationError:
-                # Re-raise ApplicationErrors as-is
                 raise
             except Exception as e:
-                # Convert to ApplicationError
                 raise ApplicationError(
                     message=f"Error in {func.__name__}: {str(e)}",
                     category=category,
@@ -457,5 +444,4 @@ def with_retry(
     return decorator
 
 
-# Global error handler instance
 error_handler = ErrorHandler()

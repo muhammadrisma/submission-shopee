@@ -56,24 +56,20 @@ def main():
     print("🚀 Local CI/CD Pipeline Test")
     print("=" * 50)
 
-    # Check if we're in the right directory
     if not Path("requirements.txt").exists():
         print("❌ Please run this script from the project root directory")
         sys.exit(1)
 
-    # Check requirements
     if not check_requirements():
         print("\n❌ Missing required tools. Please install them first.")
         sys.exit(1)
 
-    # Install development dependencies
     print("\n📦 Installing development dependencies...")
     if not run_command(
         "pip install -r requirements-dev.txt", "Install development dependencies"
     ):
         sys.exit(1)
 
-    # Code quality checks
     checks = [
         ("black --check --diff .", "Code formatting check (Black)"),
         ("isort --check-only --diff .", "Import sorting check (isort)"),
@@ -90,18 +86,15 @@ def main():
         if not run_command(command, description):
             failed_checks.append(description)
 
-    # Run tests if available
     if Path("tests").exists():
         if not run_command(
             "pytest --cov=. --cov-report=term", "Run tests with coverage"
         ):
             failed_checks.append("Tests")
 
-    # Docker build test
     if not run_command("docker build -t local-test .", "Docker build test"):
         failed_checks.append("Docker build")
 
-    # Summary
     print("\n" + "=" * 50)
     print("📊 LOCAL CI/CD TEST SUMMARY")
     print("=" * 50)

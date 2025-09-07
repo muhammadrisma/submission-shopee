@@ -8,35 +8,27 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 
 class Config:
     """Configuration class for managing application settings."""
 
-    # Database configuration
     DATABASE_PATH: str = os.getenv("DATABASE_PATH", "data/receipts.db")
 
-    # OpenRouter API configuration
     OPENROUTER_API_KEY: Optional[str] = os.getenv("OPENROUTER_API_KEY")
     OPENROUTER_BASE_URL: str = os.getenv(
         "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
     )
     OPENROUTER_MODEL: str = os.getenv("OPENROUTER_MODEL", "deepseek/deepseek-chat")
 
-    # Streamlit configuration
     STREAMLIT_PORT: int = int(os.getenv("STREAMLIT_PORT", "8501"))
 
-    # File upload configuration
     MAX_FILE_SIZE_MB: int = int(os.getenv("MAX_FILE_SIZE_MB", "10"))
     ALLOWED_EXTENSIONS: list = ["jpg", "jpeg", "png", "pdf"]
     UPLOAD_FOLDER: str = os.getenv("UPLOAD_FOLDER", "uploads")
 
-    # OCR configuration
-    TESSERACT_CMD: Optional[str] = os.getenv(
-        "TESSERACT_CMD"
-    )  # Path to tesseract executable
+    TESSERACT_CMD: Optional[str] = os.getenv("TESSERACT_CMD")
 
     @classmethod
     def validate_config(cls) -> bool:
@@ -60,5 +52,4 @@ class Config:
         return cls.UPLOAD_FOLDER
 
 
-# Create a global config instance
 config = Config()

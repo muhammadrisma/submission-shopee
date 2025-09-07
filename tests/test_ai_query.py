@@ -145,9 +145,8 @@ class TestQueryParser(unittest.TestCase):
         """Test week range calculation."""
         start, end = self.parser._get_week_range()
 
-        # Should be Monday to Sunday
-        self.assertEqual(start.weekday(), 0)  # Monday
-        self.assertEqual(end.weekday(), 6)  # Sunday
+        self.assertEqual(start.weekday(), 0)
+        self.assertEqual(end.weekday(), 6)
         self.assertEqual((end - start).days, 6)
 
     def test_get_month_range(self):
@@ -170,7 +169,6 @@ class TestSQLQueryGenerator(unittest.TestCase):
 
     def test_query_items_specific_date(self):
         """Test querying items for specific date."""
-        # Create mock receipt with items
         mock_item = ReceiptItem(
             id=1,
             receipt_id=1,
@@ -206,7 +204,6 @@ class TestSQLQueryGenerator(unittest.TestCase):
 
     def test_query_spending_date_range(self):
         """Test querying spending for date range."""
-        # Create mock receipts
         mock_receipts = [
             Receipt(
                 id=1,
@@ -400,12 +397,10 @@ class TestAIQueryService(unittest.TestCase):
 
     def test_process_query_success(self):
         """Test successful query processing."""
-        # Mock the components
         self.service.query_parser = Mock()
         self.service.sql_generator = Mock()
         self.service.response_formatter = Mock()
 
-        # Set up mock returns
         parsed_query = {"intent": "list_items", "parameters": {}}
         results = [{"item": "test"}]
         formatted_response = "Test response"
@@ -416,10 +411,8 @@ class TestAIQueryService(unittest.TestCase):
             formatted_response
         )
 
-        # Process query
         result = self.service.process_query("Test query")
 
-        # Verify result
         self.assertTrue(result["success"])
         self.assertEqual(result["query"], "Test query")
         self.assertEqual(result["parsed_query"], parsed_query)
@@ -429,14 +422,11 @@ class TestAIQueryService(unittest.TestCase):
 
     def test_process_query_error(self):
         """Test query processing with error."""
-        # Mock the components to raise an error
         self.service.query_parser = Mock()
         self.service.query_parser.parse_query.side_effect = Exception("Test error")
 
-        # Process query
         result = self.service.process_query("Test query")
 
-        # Verify error handling
         self.assertFalse(result["success"])
         self.assertEqual(result["query"], "Test query")
         self.assertIn("Test error", result["error"])
@@ -497,7 +487,7 @@ class TestGlobalServiceInstance(unittest.TestCase):
         service2 = get_ai_query_service()
 
         self.assertEqual(service1, service2)
-        mock_service_class.assert_called_once()  # Should only be called once
+        mock_service_class.assert_called_once()
 
 
 if __name__ == "__main__":

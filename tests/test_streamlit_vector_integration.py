@@ -6,7 +6,6 @@ Test vector database integration in Streamlit interface.
 import os
 import sys
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -22,20 +21,17 @@ def test_streamlit_integration():
     print("🔍 Testing Streamlit Vector Integration")
     print("=" * 50)
 
-    # Build vector index
     vector_db.build_index(force_rebuild=True)
 
-    # Get AI service (same as Streamlit uses)
     ai_service = get_ai_query_service()
 
-    # Test queries that would be used in Streamlit
     streamlit_queries = [
         "find chicken food",
         "search for apple",
         "similar to burrito",
         "mexican food",
         "dairy products",
-        "what food did I buy",  # Traditional query for comparison
+        "what food did I buy",
     ]
 
     print("Testing queries as they would work in Streamlit:")
@@ -43,14 +39,12 @@ def test_streamlit_integration():
     for query in streamlit_queries:
         print(f"\n💬 User types: '{query}'")
 
-        # This is exactly what happens in Streamlit
         result = ai_service.process_query(query)
 
         print(f"🎯 Intent detected: {result['parsed_query']['intent']}")
         print(f"📊 Results found: {len(result['results'])}")
         print(f"🤖 Response: {result['formatted_response'][:100]}...")
 
-        # Show if it's using vector search
         if result["parsed_query"]["intent"] == "semantic_search":
             print("   ✅ Using VECTOR SEARCH")
             if result["results"]:

@@ -7,7 +7,6 @@ import os
 import re
 from decimal import Decimal
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -18,17 +17,11 @@ if os.path.exists(tesseract_path):
 def targeted_item_extraction(text):
     """Extract items using a targeted approach for this specific receipt format."""
 
-    # The actual text we're working with
     print("Raw text:")
     print(repr(text))
     print()
 
-    # Look for the specific pattern in this receipt
-    # The items appear to be: CHICKENBURRITO $8.79 KIDSMEAL-MAKEOWN $4.99 LARGEDRINK $2.19 DOMESTICBEER $4.99
-
-    # More targeted patterns
     patterns = [
-        # Look for the exact sequence we see in the OCR
         r"CHICKENBURRITO\s+\$(\d+\.\d{2})",
         r"KIDSMEAL-MAKEOWN\s+\$(\d+\.\d{2})",
         r"LARGEDRINK\s+\$(\d+\.\d{2})",
@@ -66,7 +59,6 @@ def targeted_item_extraction(text):
 def test_targeted_parsing():
     """Test the targeted parsing approach."""
 
-    # Sample text from the actual OCR
     sample_text = "ear ron AUTHENTICMEXICANJOINT 908KIRKWOODAVE WESTHOLLYWOOD,CA HOST:MAURA 12/14/2018 ORDER:391 11:43AM CHICKENBURRITO $8.79 KIDSMEAL-MAKEOWN $4.99 LARGEDRINK $2.19 DOMESTICBEER $4.99 SUBTOTAL: $20.96 TAX: $1.15 VISA4932XXXXXKXXXX AUTHORIZE... BALANCEDUE $22.11 LIKEUSONFACEB800KTOGET SPECIALOFFERSBYEMAIL"
 
     print("🎯 Targeted Item Extraction")
@@ -82,7 +74,6 @@ def test_targeted_parsing():
 
     print(f"\n💰 Items total: ${total:.2f}")
 
-    # Test total extraction
     total_pattern = r"BALANCEDUE\s+\$(\d+\.\d{2})"
     total_match = re.search(total_pattern, sample_text)
     if total_match:

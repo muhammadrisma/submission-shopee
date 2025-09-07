@@ -8,11 +8,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -29,7 +27,6 @@ def demo_complete_pipeline():
     print("🧾🤖 Complete Food Receipt Analyzer Demo")
     print("=" * 70)
 
-    # 1. Show database contents
     print("1️⃣ Current Database Contents:")
     print("-" * 40)
 
@@ -45,7 +42,6 @@ def demo_complete_pipeline():
             f"🧾 {receipt.store_name} ({receipt.receipt_date}): {len(receipt.items)} items, ${receipt.total_amount:.2f}"
         )
 
-    # 2. Build vector index
     print(f"\n2️⃣ Building Vector Search Index:")
     print("-" * 40)
 
@@ -55,13 +51,11 @@ def demo_complete_pipeline():
         f"📚 Vector index: {vector_stats['vector_count']} vectors, {vector_stats['vocabulary_size']} vocabulary"
     )
 
-    # 3. Test AI query system
     print(f"\n3️⃣ AI Query System Demo:")
     print("-" * 40)
 
     ai_service = get_ai_query_service()
 
-    # Traditional queries
     print("\n🔍 Traditional Queries:")
     traditional_queries = [
         "what food did I buy",
@@ -74,7 +68,6 @@ def demo_complete_pipeline():
         result = ai_service.process_query(query)
         print(f"🤖 {result['formatted_response'][:100]}...")
 
-    # Semantic search queries
     print(f"\n🔍 Semantic Search Queries:")
     semantic_queries = [
         "find chicken food",
@@ -93,7 +86,6 @@ def demo_complete_pipeline():
         print(f"🎯 Intent: {intent} | Results: {results_count}")
         print(f"🤖 {result['formatted_response'][:120]}...")
 
-        # Show similarity scores for semantic searches
         if intent == "semantic_search" and result["results"]:
             top_result = result["results"][0]
             if "similarity_score" in top_result:
@@ -101,7 +93,6 @@ def demo_complete_pipeline():
                     f"   🎯 Top match: {top_result['item_name']} ({top_result['similarity_score']:.1%} similar)"
                 )
 
-    # 4. Vector similarity demonstration
     print(f"\n4️⃣ Vector Similarity Demonstration:")
     print("-" * 40)
 
@@ -127,7 +118,6 @@ def demo_complete_pipeline():
         else:
             print("  No similar items found")
 
-    # 5. System capabilities summary
     print(f"\n5️⃣ System Capabilities Summary:")
     print("-" * 40)
 
@@ -161,7 +151,6 @@ def demo_vector_math_concepts():
 
     from services.vector_db import TextVectorizer, VectorMath
 
-    # Show how text becomes vectors
     vectorizer = TextVectorizer()
     food_items = ["Chicken Burrito", "Apple Fruit", "Orange Juice"]
     vectors = vectorizer.fit_transform(food_items)
@@ -173,7 +162,6 @@ def demo_vector_math_concepts():
 
     print(f"\nVocabulary: {list(vectorizer.vocabulary.keys())}")
 
-    # Show similarity calculations
     print(f"\nSimilarity calculations:")
     for i in range(len(food_items)):
         for j in range(i + 1, len(food_items)):

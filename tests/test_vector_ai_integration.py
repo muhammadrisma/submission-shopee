@@ -6,7 +6,6 @@ Test the integration of vector database with AI query system.
 import os
 import sys
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -22,22 +21,17 @@ def test_vector_ai_integration():
     print("🤖🔍 Vector AI Integration Test")
     print("=" * 60)
 
-    # Initialize AI service
     ai_service = get_ai_query_service()
     if not ai_service:
         print("❌ AI service not available")
         return
 
-    # Build vector index
     print("Building vector index...")
     vector_db.build_index(force_rebuild=True)
 
-    # Test various query types
     test_queries = [
-        # Traditional queries
         "what food did I buy",
         "what did I buy in 2018",
-        # Semantic search queries
         "find chicken food",
         "search for apple fruit",
         "look for drinks",
@@ -46,7 +40,6 @@ def test_vector_ai_integration():
         "dairy products",
         "beverages",
         "meat items",
-        # Mixed queries
         "find items like apple",
         "search for food similar to chicken",
         "show me drinks I bought",
@@ -61,7 +54,6 @@ def test_vector_ai_integration():
             print(f"📊 Results: {len(result['results'])}")
             print(f"🤖 Response: {result['formatted_response'][:150]}...")
 
-            # Show similarity scores for semantic searches
             if (
                 result["parsed_query"]["intent"] == "semantic_search"
                 and result["results"]
@@ -82,7 +74,6 @@ def test_semantic_search_accuracy():
     print("\n🎯 Semantic Search Accuracy Test")
     print("=" * 60)
 
-    # Test cases with expected results
     test_cases = [
         {
             "query": "chicken",
@@ -111,7 +102,6 @@ def test_semantic_search_accuracy():
         print(f"   Expected: {test_case['expected_items']}")
         print(f"   Goal: {test_case['description']}")
 
-        # Perform semantic search
         results = vector_db.semantic_search(test_case["query"], top_k=5)
 
         if results:
@@ -123,7 +113,6 @@ def test_semantic_search_accuracy():
                 )
                 found_items.append(result.item_name)
 
-            # Check accuracy
             expected_found = sum(
                 1 for item in test_case["expected_items"] if item in found_items
             )
@@ -146,7 +135,6 @@ def test_vector_database_performance():
 
     import time
 
-    # Test search performance
     queries = ["chicken", "apple", "drink", "food", "mexican"]
 
     total_time = 0
@@ -170,7 +158,6 @@ def test_vector_database_performance():
     else:
         print("Queries per second: Very fast (< 0.0001s per query)")
 
-    # Test index building performance
     print("\nIndex building performance:")
     start_time = time.time()
     vector_db.build_index(force_rebuild=True)

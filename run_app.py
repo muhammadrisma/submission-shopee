@@ -14,7 +14,6 @@ def main():
     """Run the Streamlit application."""
     print("🧾 Starting Food Receipt Analyzer...")
 
-    # Check if streamlit is installed
     try:
         import streamlit
     except ImportError:
@@ -22,13 +21,9 @@ def main():
         print("pip install -r requirements.txt")
         sys.exit(1)
 
-    # Ensure upload directory exists
     os.makedirs(config.get_upload_path(), exist_ok=True)
 
-    # Set up environment for Tesseract
     env = os.environ.copy()
-
-    # Add Tesseract to PATH if it exists
     tesseract_paths = [
         r"C:\Program Files\Tesseract-OCR",
         r"C:\Program Files (x86)\Tesseract-OCR",
@@ -47,7 +42,6 @@ def main():
                 print(f"📍 Added Tesseract to PATH: {tesseract_path}")
             break
 
-    # Run streamlit
     try:
         cmd = [
             sys.executable,

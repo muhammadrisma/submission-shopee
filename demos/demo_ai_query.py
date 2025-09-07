@@ -9,7 +9,6 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -21,7 +20,6 @@ from services.ai_query import QueryParser, ResponseFormatter, SQLQueryGenerator
 
 def create_sample_data():
     """Create sample receipt data for testing."""
-    # Create sample items
     items1 = [
         ReceiptItem("Pizza", 1, Decimal("12.99"), Decimal("12.99"), id=1, receipt_id=1),
         ReceiptItem("Soda", 2, Decimal("1.50"), Decimal("3.00"), id=2, receipt_id=1),
@@ -34,11 +32,10 @@ def create_sample_data():
         ReceiptItem("Fries", 1, Decimal("3.50"), Decimal("3.50"), id=4, receipt_id=2),
     ]
 
-    # Create sample receipts
     receipt1 = Receipt(
         id=1,
         store_name="Pizza Palace",
-        receipt_date=date.today() - timedelta(days=1),  # Yesterday
+        receipt_date=date.today() - timedelta(days=1),
         total_amount=Decimal("15.99"),
         upload_timestamp=datetime.now(),
         raw_text="",
@@ -49,7 +46,7 @@ def create_sample_data():
     receipt2 = Receipt(
         id=2,
         store_name="Burger King",
-        receipt_date=date.today() - timedelta(days=3),  # 3 days ago
+        receipt_date=date.today() - timedelta(days=3),
         total_amount=Decimal("12.49"),
         upload_timestamp=datetime.now(),
         raw_text="",
@@ -97,7 +94,6 @@ def create_mock_openrouter_client():
     mock_client = Mock()
 
     def chat_completion(messages, max_tokens=1000, temperature=0.1):
-        # Simple mock response
         return {
             "choices": [
                 {
@@ -138,11 +134,9 @@ def test_sql_generation():
     """Test SQL query generation and execution."""
     print("\n=== Testing SQL Generation ===")
 
-    # Create sample data and mock database
     receipts = create_sample_data()
     mock_db = create_mock_db_service(receipts)
 
-    # Create SQL generator
     sql_generator = SQLQueryGenerator(mock_db)
     parser = QueryParser()
 
@@ -165,7 +159,6 @@ def test_response_formatting():
     """Test response formatting."""
     print("\n=== Testing Response Formatting ===")
 
-    # Create sample data and services
     receipts = create_sample_data()
     mock_db = create_mock_db_service(receipts)
     mock_client = create_mock_openrouter_client()
@@ -192,9 +185,6 @@ def test_end_to_end():
     """Test complete end-to-end query processing."""
     print("\n=== Testing End-to-End Processing ===")
 
-    # This would normally use the full AIQueryService, but we'll simulate it
-    # without requiring API keys
-
     receipts = create_sample_data()
     mock_db = create_mock_db_service(receipts)
     mock_client = create_mock_openrouter_client()
@@ -212,15 +202,12 @@ def test_end_to_end():
     for query in test_queries:
         print(f"\n--- Processing: {query} ---")
 
-        # Parse query
         parsed = parser.parse_query(query)
         print(f"Parsed intent: {parsed['intent']}")
 
-        # Generate results
         results = sql_generator.generate_query_results(parsed)
         print(f"Found {len(results)} results")
 
-        # Format response
         formatted = formatter.format_response(query, results, parsed)
         print(f"Response: {formatted}")
 

@@ -35,7 +35,6 @@ class TestDatabaseManager(unittest.TestCase):
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Check tables exist
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
 
@@ -85,7 +84,6 @@ class TestDatabaseService(unittest.TestCase):
         self.db_service = DatabaseService()
         self.db_service.db_manager = self.db_manager
 
-        # Create sample data
         self.sample_items = [
             ReceiptItem("Apple", 2, Decimal("1.50"), Decimal("3.00")),
             ReceiptItem("Banana", 3, Decimal("0.75"), Decimal("2.25")),
@@ -112,7 +110,6 @@ class TestDatabaseService(unittest.TestCase):
         self.assertIsNotNone(receipt_id)
         self.assertEqual(self.sample_receipt.id, receipt_id)
 
-        # Verify items have receipt_id set
         for item in self.sample_receipt.items:
             self.assertEqual(item.receipt_id, receipt_id)
             self.assertIsNotNone(item.id)
@@ -121,7 +118,6 @@ class TestDatabaseService(unittest.TestCase):
         """Test saving duplicate receipt raises error."""
         self.db_service.save_receipt(self.sample_receipt)
 
-        # Try to save the same receipt again
         duplicate_receipt = Receipt(
             store_name="Test Store",
             receipt_date=date(2024, 1, 15),
@@ -145,7 +141,6 @@ class TestDatabaseService(unittest.TestCase):
         self.assertEqual(retrieved_receipt.total_amount, Decimal("5.25"))
         self.assertEqual(len(retrieved_receipt.items), 2)
 
-        # Check items
         apple_item = next(
             item for item in retrieved_receipt.items if item.item_name == "Apple"
         )
@@ -160,7 +155,6 @@ class TestDatabaseService(unittest.TestCase):
 
     def test_get_receipts_by_date_range(self):
         """Test retrieving receipts by date range."""
-        # Save multiple receipts with different dates
         receipt1 = Receipt("Store A", date(2024, 1, 10), Decimal("10.00"))
         receipt2 = Receipt("Store B", date(2024, 1, 15), Decimal("15.00"))
         receipt3 = Receipt("Store C", date(2024, 1, 20), Decimal("20.00"))
@@ -169,7 +163,6 @@ class TestDatabaseService(unittest.TestCase):
         self.db_service.save_receipt(receipt2)
         self.db_service.save_receipt(receipt3)
 
-        # Get receipts in range
         receipts = self.db_service.get_receipts_by_date_range(
             date(2024, 1, 12), date(2024, 1, 18)
         )
@@ -187,7 +180,6 @@ class TestDatabaseService(unittest.TestCase):
         self.db_service.save_receipt(receipt2)
         self.db_service.save_receipt(receipt3)
 
-        # Search for "Target" (should match both Target stores)
         receipts = self.db_service.get_receipts_by_store("Target")
 
         self.assertEqual(len(receipts), 2)
@@ -197,7 +189,6 @@ class TestDatabaseService(unittest.TestCase):
 
     def test_search_items_by_name(self):
         """Test searching items by name."""
-        # Create receipts with different items
         receipt1 = Receipt(
             "Store A",
             date(2024, 1, 10),
@@ -218,7 +209,6 @@ class TestDatabaseService(unittest.TestCase):
         self.db_service.save_receipt(receipt1)
         self.db_service.save_receipt(receipt2)
 
-        # Search for "Apple"
         results = self.db_service.search_items_by_name("Apple")
 
         self.assertEqual(len(results), 2)
@@ -228,7 +218,6 @@ class TestDatabaseService(unittest.TestCase):
 
     def test_search_items_with_time_limit(self):
         """Test searching items with time limit."""
-        # Create receipt from 10 days ago
         old_receipt = Receipt(
             "Store A",
             date(2024, 1, 1),
@@ -238,7 +227,6 @@ class TestDatabaseService(unittest.TestCase):
 
         self.db_service.save_receipt(old_receipt)
 
-        # Search for items in last 7 days (should find nothing)
         results = self.db_service.search_items_by_name("Apple", days_back=7)
         self.assertEqual(len(results), 0)
 
@@ -296,7 +284,6 @@ class TestDatabaseService(unittest.TestCase):
         """Test updating an existing receipt."""
         receipt_id = self.db_service.save_receipt(self.sample_receipt)
 
-        # Update the receipt
         self.sample_receipt.store_name = "Updated Store"
         self.sample_receipt.total_amount = Decimal("10.00")
         self.sample_receipt.items = [
@@ -306,7 +293,6 @@ class TestDatabaseService(unittest.TestCase):
         success = self.db_service.update_receipt(self.sample_receipt)
         self.assertTrue(success)
 
-        # Verify update
         updated_receipt = self.db_service.get_receipt_by_id(receipt_id)
         self.assertEqual(updated_receipt.store_name, "Updated Store")
         self.assertEqual(updated_receipt.total_amount, Decimal("10.00"))
@@ -316,7 +302,7 @@ class TestDatabaseService(unittest.TestCase):
     def test_update_nonexistent_receipt(self):
         """Test updating non-existent receipt returns False."""
         receipt = Receipt("Store", date(2024, 1, 15), Decimal("5.00"))
-        receipt.id = 999  # Non-existent ID
+        receipt.id = 999
 
         success = self.db_service.update_receipt(receipt)
         self.assertFalse(success)
@@ -328,7 +314,6 @@ class TestDatabaseService(unittest.TestCase):
         success = self.db_service.delete_receipt(receipt_id)
         self.assertTrue(success)
 
-        # Verify deletion
         deleted_receipt = self.db_service.get_receipt_by_id(receipt_id)
         self.assertIsNone(deleted_receipt)
 
@@ -348,7 +333,6 @@ class TestDatabaseService(unittest.TestCase):
         all_receipts = self.db_service.get_all_receipts()
         self.assertEqual(len(all_receipts), 2)
 
-        # Test with limit
         limited_receipts = self.db_service.get_all_receipts(limit=1)
         self.assertEqual(len(limited_receipts), 1)
 

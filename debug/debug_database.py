@@ -7,11 +7,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -28,7 +26,6 @@ def check_database_contents():
     print("=" * 50)
 
     try:
-        # Get database stats
         stats = db_service.get_database_stats()
         print(f"📊 Database Statistics:")
         print(f"   Receipts: {stats['receipt_count']}")
@@ -40,7 +37,6 @@ def check_database_contents():
                 f"   Date Range: {stats['date_range']['earliest']} to {stats['date_range']['latest']}"
             )
 
-        # Get all receipts
         receipts = db_service.get_all_receipts()
         print(f"\n📋 All Receipts ({len(receipts)}):")
 
@@ -102,14 +98,12 @@ def add_test_receipt():
         from models.receipt import Receipt, ReceiptItem
         from services.computer_vision import ComputerVisionService
 
-        # Process the actual receipt
         receipt_path = "receipt_example/burrito_receipt.jpg"
         if os.path.exists(receipt_path):
             print(f"Processing: {receipt_path}")
             cv_service = ComputerVisionService()
             result = cv_service.process_receipt(receipt_path)
 
-            # Create receipt object
             items = []
             for item_data in result["items"]:
                 item = ReceiptItem(
@@ -129,7 +123,6 @@ def add_test_receipt():
                 items=items,
             )
 
-            # Save to database
             receipt_id = db_service.save_receipt(receipt)
             print(f"✅ Saved receipt with ID: {receipt_id}")
             print(f"   Store: {receipt.store_name}")
@@ -146,7 +139,6 @@ def main():
     """Run all database debugging."""
     check_database_contents()
 
-    # If database is empty, add a test receipt
     stats = db_service.get_database_stats()
     if stats["receipt_count"] == 0:
         add_test_receipt()

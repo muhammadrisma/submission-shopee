@@ -6,7 +6,6 @@ Test the enhanced Streamlit integration with vector search indicators.
 import os
 import sys
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -19,11 +18,9 @@ def test_enhanced_features():
     print("🎨 Enhanced Streamlit Features Test")
     print("=" * 50)
 
-    # Test vector search status
     try:
         from services.vector_db import vector_db
 
-        # Build index
         vector_db.build_index(force_rebuild=True)
         stats = vector_db.get_stats()
 
@@ -33,13 +30,11 @@ def test_enhanced_features():
     except Exception as e:
         print(f"❌ Vector search error: {e}")
 
-    # Test AI service with enhanced responses
     try:
         from services.ai_query import get_ai_query_service
 
         ai_service = get_ai_query_service()
 
-        # Test semantic search query
         result = ai_service.process_query("find chicken food")
 
         print(f"\n🔍 Semantic Search Test:")

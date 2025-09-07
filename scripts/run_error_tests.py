@@ -10,7 +10,6 @@ import sys
 import tempfile
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -59,7 +58,6 @@ def test_file_validation():
     from utils.error_handling import ValidationError
     from utils.validation import file_validator
 
-    # Test 1: Valid image
     try:
         img = Image.new("RGB", (100, 100), color="red")
         img_bytes = io.BytesIO()
@@ -73,9 +71,8 @@ def test_file_validation():
     except Exception as e:
         print(f"❌ Valid image test failed: {e}")
 
-    # Test 2: File too large
     try:
-        large_file = io.BytesIO(b"x" * (15 * 1024 * 1024))  # 15MB
+        large_file = io.BytesIO(b"x" * (15 * 1024 * 1024))
         large_file.name = "large.jpg"
         large_file.size = 15 * 1024 * 1024
 
@@ -87,7 +84,6 @@ def test_file_validation():
     except Exception as e:
         print(f"❌ Large file test failed unexpectedly: {e}")
 
-    # Test 3: Invalid extension
     try:
         text_file = io.BytesIO(b"Hello world")
         text_file.name = "test.txt"
@@ -109,14 +105,12 @@ def test_text_validation():
     from utils.error_handling import ValidationError
     from utils.validation import TextValidator
 
-    # Test 1: Valid query
     try:
         result = TextValidator.validate_query("What did I buy yesterday?")
         print("✅ Valid query test passed")
     except Exception as e:
         print(f"❌ Valid query test failed: {e}")
 
-    # Test 2: Empty query
     try:
         TextValidator.validate_query("")
         print("❌ Empty query test should have failed")
@@ -126,7 +120,6 @@ def test_text_validation():
     except Exception as e:
         print(f"❌ Empty query test failed unexpectedly: {e}")
 
-    # Test 3: Malicious content
     try:
         TextValidator.validate_query("What did I buy <script>alert('xss')</script>?")
         print("❌ Malicious content test should have failed")
@@ -147,7 +140,6 @@ def test_retry_mechanism():
 
     retry_mechanism = RetryMechanism(max_retries=3, base_delay=0.1)
 
-    # Test 1: Successful retry
     try:
         call_count = 0
 
@@ -168,7 +160,6 @@ def test_retry_mechanism():
     except Exception as e:
         print(f"❌ Successful retry test failed: {e}")
 
-    # Test 2: Max retries exceeded
     try:
 
         def always_failing_function():
@@ -190,7 +181,6 @@ def test_error_handler():
 
     handler = ErrorHandler()
 
-    # Test 1: Handle generic exception
     try:
         error = ValueError("Test error")
         result = handler.handle_error(error)
@@ -202,7 +192,6 @@ def test_error_handler():
     except Exception as e:
         print(f"❌ Generic exception handling test failed: {e}")
 
-    # Test 2: Handle application error
     try:
         error = ValidationError(
             message="Test validation error",
@@ -232,7 +221,6 @@ def test_ocr_error_scenarios():
 
     cv_service = ComputerVisionService()
 
-    # Test 1: Missing file
     try:
         cv_service.process_receipt("/nonexistent/path.jpg")
         print("❌ Missing file test should have failed")
@@ -247,10 +235,8 @@ def main():
     """Run all error handling tests."""
     print("🚀 Starting comprehensive error handling tests...\n")
 
-    # Run pytest tests
     pytest_success = run_pytest_tests()
 
-    # Run manual integration tests
     test_file_validation()
     test_text_validation()
     test_retry_mechanism()

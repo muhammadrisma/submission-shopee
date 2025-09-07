@@ -8,11 +8,9 @@ import os
 import sys
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -27,11 +25,10 @@ def demo_vector_math():
     print("🧮 Vector Math Demo")
     print("=" * 50)
 
-    # Test vectors
     vec1 = [1.0, 2.0, 3.0]
-    vec2 = [2.0, 4.0, 6.0]  # Same direction, different magnitude
-    vec3 = [1.0, 0.0, 0.0]  # Orthogonal to vec1
-    vec4 = [-1.0, -2.0, -3.0]  # Opposite direction to vec1
+    vec2 = [2.0, 4.0, 6.0]
+    vec3 = [1.0, 0.0, 0.0]
+    vec4 = [-1.0, -2.0, -3.0]
 
     print(f"Vector 1: {vec1}")
     print(f"Vector 2: {vec2} (same direction)")
@@ -39,7 +36,6 @@ def demo_vector_math():
     print(f"Vector 4: {vec4} (opposite direction)")
     print()
 
-    # Cosine similarity tests
     sim_12 = VectorMath.cosine_similarity(vec1, vec2)
     sim_13 = VectorMath.cosine_similarity(vec1, vec3)
     sim_14 = VectorMath.cosine_similarity(vec1, vec4)
@@ -50,7 +46,6 @@ def demo_vector_math():
     print(f"  vec1 ↔ vec4 (opposite): {sim_14:.3f}")
     print()
 
-    # Euclidean distance tests
     dist_12 = VectorMath.euclidean_distance(vec1, vec2)
     dist_13 = VectorMath.euclidean_distance(vec1, vec3)
 
@@ -64,7 +59,6 @@ def demo_text_vectorizer():
     print("\n📝 Text Vectorizer Demo")
     print("=" * 50)
 
-    # Sample food items
     food_items = [
         "Chicken Burrito",
         "Kids Meal - Make Own",
@@ -83,7 +77,6 @@ def demo_text_vectorizer():
         print(f"  {i}. {item}")
     print()
 
-    # Create and fit vectorizer
     vectorizer = TextVectorizer()
     vectors = vectorizer.fit_transform(food_items)
 
@@ -91,10 +84,8 @@ def demo_text_vectorizer():
     print(f"Sample vocabulary: {list(vectorizer.vocabulary.keys())[:10]}")
     print()
 
-    # Test similarity between items
     print("Similarity Tests:")
 
-    # Similar items
     chicken_vec = vectorizer.transform("Chicken Burrito")
     kids_meal_vec = vectorizer.transform("Kids Meal")
     apple_green_vec = vectorizer.transform("Green Apple")
@@ -109,7 +100,6 @@ def demo_text_vectorizer():
     print(f"  Chicken Burrito ↔ Green Apple: {sim_chicken_apple:.3f}")
     print()
 
-    # Test query matching
     print("Query Matching:")
     query_vec = vectorizer.transform("apple fruit")
 
@@ -124,11 +114,9 @@ def demo_vector_database():
     print("\n🗄️ Vector Database Demo")
     print("=" * 50)
 
-    # Build the vector index
     print("Building vector index...")
     vector_db.build_index(force_rebuild=True)
 
-    # Get database stats
     stats = vector_db.get_stats()
     print(f"\nDatabase Stats:")
     print(f"  Vectors stored: {stats['vector_count']}")
@@ -136,7 +124,6 @@ def demo_vector_database():
     print(f"  Index fitted: {stats['is_fitted']}")
     print()
 
-    # Test semantic search
     test_queries = [
         "chicken food",
         "apple fruit",
@@ -161,7 +148,6 @@ def demo_vector_database():
             print("  No results found")
         print()
 
-    # Test finding similar items
     print("🔗 Finding Similar Items:")
     similar_results = vector_db.find_similar_items("Chicken Burrito", top_k=3)
 

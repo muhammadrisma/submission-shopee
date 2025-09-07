@@ -38,7 +38,6 @@ class TestImagePreprocessor:
         self, mock_cleanup, mock_enhance, mock_reduce, mock_cvt, mock_imread
     ):
         """Test successful image preprocessing."""
-        # Mock image data
         mock_image = np.zeros((100, 100, 3), dtype=np.uint8)
         mock_gray = np.zeros((100, 100), dtype=np.uint8)
         mock_processed = np.ones((100, 100), dtype=np.uint8) * 255
@@ -61,7 +60,6 @@ class TestImagePreprocessor:
 
     def test_reduce_noise(self):
         """Test noise reduction functionality."""
-        # Create test image with noise
         test_image = np.random.randint(0, 255, (50, 50), dtype=np.uint8)
 
         result = ImagePreprocessor._reduce_noise(test_image)
@@ -71,7 +69,6 @@ class TestImagePreprocessor:
 
     def test_enhance_contrast(self):
         """Test contrast enhancement functionality."""
-        # Create test image with low contrast
         test_image = np.full((50, 50), 128, dtype=np.uint8)
 
         result = ImagePreprocessor._enhance_contrast(test_image)
@@ -81,7 +78,6 @@ class TestImagePreprocessor:
 
     def test_morphological_cleanup(self):
         """Test morphological cleanup functionality."""
-        # Create test binary image
         test_image = np.random.choice([0, 255], (50, 50)).astype(np.uint8)
 
         result = ImagePreprocessor._morphological_cleanup(test_image)
@@ -122,7 +118,6 @@ class TestOCRService:
 
         result = ocr_service.extract_text(test_image)
 
-        # Check that artifacts are cleaned
         assert "|" not in result
         assert "\\" not in result
         assert "WALMART" in result or "WAL MART" in result
@@ -176,7 +171,7 @@ class TestReceiptParser:
         test_cases = [
             ("Receipt Date: 12/25/2023", date(2023, 12, 25)),
             ("Date: 2023-12-25", date(2023, 12, 25)),
-            ("Dec 25, 2023", None),  # This format might not be caught
+            ("Dec 25, 2023", None),
             ("12-25-23", date(2023, 12, 25)),
         ]
 
@@ -185,7 +180,6 @@ class TestReceiptParser:
             if expected:
                 assert result == expected
             else:
-                # Should fallback to today's date
                 assert result == date.today()
 
     def test_extract_items_simple(self):
@@ -198,9 +192,8 @@ class TestReceiptParser:
 
         result = self.parser._extract_items(text)
 
-        assert len(result) >= 2  # Should find at least some items
+        assert len(result) >= 2
 
-        # Check that items have required fields
         for item in result:
             assert "item_name" in item
             assert "quantity" in item
@@ -218,10 +211,8 @@ class TestReceiptParser:
 
         result = self.parser._extract_items(text)
 
-        # Should find at least some items
         assert len(result) >= 1
 
-        # Check that items have required fields
         for item in result:
             assert "item_name" in item
             assert "quantity" in item
@@ -246,7 +237,7 @@ class TestReceiptParser:
     def test_parse_receipt_complete(self):
         """Test complete receipt parsing."""
         sample_receipt = """WALMART SUPERCENTER
-        Store #1234
+        Store
         123 Main Street
         Date: 12/25/2023
         
@@ -262,7 +253,6 @@ class TestReceiptParser:
 
         assert result["store_name"] == "Walmart"
         assert result["receipt_date"] == date(2023, 12, 25)
-        # Total should be reasonable (could be subtotal or actual total)
         assert 8.0 <= result["total_amount"] <= 10.0
         assert len(result["items"]) >= 1
         assert result["raw_text"] == sample_receipt
@@ -276,7 +266,6 @@ class TestComputerVisionService:
     @patch("services.computer_vision.ReceiptParser.parse_receipt")
     def test_process_receipt_success(self, mock_parse, mock_ocr, mock_preprocess):
         """Test successful end-to-end receipt processing."""
-        # Mock the pipeline
         mock_preprocess.return_value = np.zeros((100, 100), dtype=np.uint8)
         mock_ocr.return_value = "WALMART\nItem 1 $5.99\nTotal: $5.99"
         mock_parse.return_value = {
@@ -318,17 +307,15 @@ class TestComputerVisionService:
             service.process_receipt("nonexistent.jpg")
 
 
-# Integration test with sample data
 class TestIntegrationWithSampleData:
     """Integration tests using sample receipt data."""
 
     def test_parser_with_realistic_receipt_text(self):
         """Test parser with realistic OCR output."""
-        # Simulate realistic OCR output with some noise
         realistic_ocr_text = """WAL*MART SUPERCENTER
-        Store #2345 Manager JOHN DOE
+        Store
         123 MAIN ST ANYTOWN ST 12345
-        ST# 2345 OP# 00001234 TE# 12 TR# 5678
+        ST
         
         GREAT VALUE MILK 1GAL    3.48
         BANANAS                  2.18 F
@@ -347,16 +334,13 @@ class TestIntegrationWithSampleData:
         parser = ReceiptParser()
         result = parser.parse_receipt(realistic_ocr_text)
 
-        # Verify basic parsing worked
         assert result["store_name"] is not None
         assert result["receipt_date"] is not None
         assert result["total_amount"] is not None
         assert isinstance(result["items"], list)
 
-        # Should extract some items
         assert len(result["items"]) >= 1
 
-        # Total should be reasonable
         assert 10.0 <= result["total_amount"] <= 12.0
 
 

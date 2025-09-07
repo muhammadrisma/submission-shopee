@@ -107,14 +107,12 @@ def check_permissions() -> List[Tuple[bool, str]]:
     """Check file system permissions."""
     results = []
 
-    # Check if we can create the data directory
     try:
         os.makedirs("data", exist_ok=True)
         results.append((True, "✅ Can create data directory"))
     except Exception as e:
         results.append((False, f"❌ Cannot create data directory: {e}"))
 
-    # Check if we can create the uploads directory
     try:
         os.makedirs("uploads", exist_ok=True)
         results.append((True, "✅ Can create uploads directory"))
@@ -129,18 +127,15 @@ def main():
     print("🧾 Food Receipt Analyzer - Installation Diagnostic")
     print("=" * 60)
 
-    # System information
     print(f"\n💻 System Information:")
     print(f"   OS: {platform.system()} {platform.release()}")
     print(f"   Architecture: {platform.machine()}")
     print(f"   Python: {sys.executable}")
 
-    # Check Python version
     print(f"\n🐍 Python Version:")
     python_ok, python_msg = check_python_version()
     print(f"   {python_msg}")
 
-    # Check dependencies
     print(f"\n📦 Python Dependencies:")
     dep_results = check_dependencies()
     all_deps_ok = True
@@ -149,17 +144,14 @@ def main():
         if not dep_ok:
             all_deps_ok = False
 
-    # Check Tesseract
     print(f"\n🔍 OCR Engine:")
     tesseract_ok, tesseract_msg = check_tesseract()
     print(f"   {tesseract_msg}")
 
-    # Check configuration
     print(f"\n⚙️ Configuration:")
     config_ok, config_msg = check_config_file()
     print(f"   {config_msg}")
 
-    # Check directories
     print(f"\n📁 Project Structure:")
     dir_results = check_directories()
     all_dirs_ok = True
@@ -168,7 +160,6 @@ def main():
         if not dir_ok:
             all_dirs_ok = False
 
-    # Check permissions
     print(f"\n🔐 Permissions:")
     perm_results = check_permissions()
     all_perms_ok = True
@@ -177,7 +168,6 @@ def main():
         if not perm_ok:
             all_perms_ok = False
 
-    # Summary
     print(f"\n" + "=" * 60)
     print(f"📊 Summary:")
 

@@ -31,7 +31,7 @@ class DatabaseManager:
         conn = None
         try:
             conn = sqlite3.connect(self.db_path)
-            conn.row_factory = sqlite3.Row  # Enable dict-like access to rows
+            conn.row_factory = sqlite3.Row
             yield conn
         except Exception as e:
             if conn:
@@ -50,7 +50,6 @@ class DatabaseManager:
     def _create_tables(self, conn: sqlite3.Connection):
         """Create all required database tables."""
 
-        # Create receipts table
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS receipts (
@@ -66,7 +65,6 @@ class DatabaseManager:
         """
         )
 
-        # Create receipt_items table
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS receipt_items (
@@ -81,7 +79,6 @@ class DatabaseManager:
         """
         )
 
-        # Create indexes for better query performance
         conn.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_receipts_date 
@@ -122,11 +119,9 @@ class DatabaseManager:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get table names
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [row[0] for row in cursor.fetchall()]
 
-            # Get counts for each table
             table_counts = {}
             for table in tables:
                 cursor.execute(f"SELECT COUNT(*) FROM {table}")
@@ -149,7 +144,6 @@ class DatabaseManager:
             return False
 
 
-# Global database manager instance
 db_manager = DatabaseManager()
 
 

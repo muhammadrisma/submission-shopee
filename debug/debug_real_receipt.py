@@ -6,7 +6,6 @@ Debug script to see what text is actually extracted from the real receipt image.
 import os
 import sys
 
-# Add Tesseract to PATH
 tesseract_path = r"C:\Program Files\Tesseract-OCR"
 if os.path.exists(tesseract_path):
     current_path = os.environ.get("PATH", "")
@@ -36,7 +35,7 @@ def debug_real_receipt():
 
         print("\n📝 Raw Extracted Text:")
         print("-" * 30)
-        print(repr(result["raw_text"]))  # Use repr to see special characters
+        print(repr(result["raw_text"]))
         print("-" * 30)
         print(result["raw_text"])
 
@@ -51,7 +50,6 @@ def debug_real_receipt():
         else:
             print("  No items extracted")
 
-        # Debug line by line
         print(f"\n🔍 Line-by-Line Analysis:")
         print("-" * 30)
         lines = result["raw_text"].split("\n")

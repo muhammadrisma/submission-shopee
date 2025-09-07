@@ -88,19 +88,15 @@ def run_deployment_verification(base_url: str, timeout: int = 30) -> Dict[str, A
         "overall_success": False,
     }
 
-    # Health check
     print("1. Checking health endpoint...")
     results["health_check"] = check_health_endpoint(base_url, timeout)
 
-    # Main page check
     print("\n2. Checking main page accessibility...")
     results["main_page"] = check_main_page(base_url)
 
-    # Static resources check
     print("\n3. Checking static resources...")
     results["static_resources"] = check_static_resources(base_url)
 
-    # Overall result
     results["overall_success"] = results["health_check"] and results["main_page"]
 
     print("\n" + "=" * 50)

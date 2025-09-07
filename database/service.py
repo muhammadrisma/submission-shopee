@@ -28,7 +28,6 @@ class DatabaseService:
             cursor = conn.cursor()
 
             try:
-                # Insert receipt
                 cursor.execute(
                     """
                     INSERT INTO receipts (store_name, receipt_date, total_amount, 
@@ -52,7 +51,6 @@ class DatabaseService:
                 receipt_id = cursor.lastrowid
                 receipt.id = receipt_id
 
-                # Insert receipt items
                 for item in receipt.items:
                     item.receipt_id = receipt_id
                     self._save_receipt_item(cursor, item)
@@ -92,7 +90,6 @@ class DatabaseService:
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Get receipt
             cursor.execute(
                 """
                 SELECT id, store_name, receipt_date, total_amount, 
@@ -106,7 +103,6 @@ class DatabaseService:
             if not row:
                 return None
 
-            # Parse receipt data
             receipt_data = dict(row)
             receipt_data["receipt_date"] = datetime.fromisoformat(
                 receipt_data["receipt_date"]
@@ -117,7 +113,6 @@ class DatabaseService:
                 )
             receipt_data["total_amount"] = Decimal(str(receipt_data["total_amount"]))
 
-            # Get receipt items
             cursor.execute(
                 """
                 SELECT id, receipt_id, item_name, quantity, unit_price, total_price
@@ -141,7 +136,6 @@ class DatabaseService:
                     )
                 )
 
-            # Create receipt directly instead of using from_dict
             return Receipt(
                 id=receipt_data["id"],
                 store_name=receipt_data["store_name"],
@@ -289,7 +283,6 @@ class DatabaseService:
             cursor = conn.cursor()
 
             try:
-                # Update receipt
                 cursor.execute(
                     """
                     UPDATE receipts 
@@ -310,7 +303,6 @@ class DatabaseService:
                 if cursor.rowcount == 0:
                     return False
 
-                # Delete existing items and re-insert
                 cursor.execute(
                     "DELETE FROM receipt_items WHERE receipt_id = ?", (receipt.id,)
                 )
@@ -332,7 +324,6 @@ class DatabaseService:
             cursor = conn.cursor()
 
             try:
-                # Delete receipt (items will be deleted by CASCADE)
                 cursor.execute("DELETE FROM receipts WHERE id = ?", (receipt_id,))
 
                 deleted = cursor.rowcount > 0
@@ -365,19 +356,15 @@ class DatabaseService:
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Count receipts
             cursor.execute("SELECT COUNT(*) FROM receipts")
             receipt_count = cursor.fetchone()[0]
 
-            # Count items
             cursor.execute("SELECT COUNT(*) FROM receipt_items")
             item_count = cursor.fetchone()[0]
 
-            # Get date range
             cursor.execute("SELECT MIN(receipt_date), MAX(receipt_date) FROM receipts")
             date_range = cursor.fetchone()
 
-            # Get total spending
             cursor.execute("SELECT COALESCE(SUM(total_amount), 0) FROM receipts")
             total_spending = cursor.fetchone()[0]
 
@@ -389,5 +376,4 @@ class DatabaseService:
             }
 
 
-# Global database service instance
 db_service = DatabaseService()

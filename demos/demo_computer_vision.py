@@ -9,7 +9,6 @@ with sample receipt text (simulating OCR output).
 import sys
 from pathlib import Path
 
-# Add project root to Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -23,11 +22,10 @@ def demo_receipt_parser():
     """Demonstrate receipt parsing with sample OCR text."""
     print("=== Computer Vision Service Demo ===\n")
 
-    # Sample OCR text that might come from a real receipt
     sample_ocr_text = """WAL*MART SUPERCENTER
-Store #2345 Manager JOHN DOE
+Store
 123 MAIN ST ANYTOWN ST 12345
-ST# 2345 OP# 00001234 TE# 12 TR# 5678
+ST
 
 GREAT VALUE MILK 1GAL    3.48
 BANANAS                  2.18 F
@@ -49,7 +47,6 @@ CHANGE                   3.75
     print("-" * 50)
     print()
 
-    # Parse the receipt
     parser = ReceiptParser()
     result = parser.parse_receipt(sample_ocr_text)
 
@@ -71,7 +68,6 @@ CHANGE                   3.75
 
     print("Raw JSON Output:")
     print("-" * 50)
-    # Convert date to string for JSON serialization
     result_copy = result.copy()
     result_copy["receipt_date"] = result_copy["receipt_date"].isoformat()
     if "processing_timestamp" in result_copy:

@@ -30,22 +30,18 @@ class TextVectorizer:
 
     def __init__(self):
         """Initialize the vectorizer."""
-        self.vocabulary = {}  # word -> index mapping
-        self.idf_scores = {}  # word -> IDF score
+        self.vocabulary = {}
+        self.idf_scores = {}
         self.is_fitted = False
 
     def _preprocess_text(self, text: str) -> List[str]:
         """Preprocess text into tokens."""
-        # Convert to lowercase and remove special characters
         text = re.sub(r"[^a-zA-Z0-9\s-]", "", text.lower())
 
-        # Split into words and filter out short words
         words = [word.strip() for word in text.split() if len(word.strip()) > 1]
 
-        # Handle compound food names
         processed_words = []
         for word in words:
-            # Split hyphenated words: "kids-meal" -> ["kids", "meal"]
             if "-" in word:
                 processed_words.extend(word.split("-"))
             else:
@@ -55,17 +51,14 @@ class TextVectorizer:
 
     def fit(self, documents: List[str]):
         """Fit the vectorizer on a collection of documents."""
-        # Preprocess all documents
         processed_docs = [self._preprocess_text(doc) for doc in documents]
 
-        # Build vocabulary
         all_words = set()
         for doc in processed_docs:
             all_words.update(doc)
 
         self.vocabulary = {word: idx for idx, word in enumerate(sorted(all_words))}
 
-        # Calculate IDF scores
         doc_count = len(processed_docs)
         word_doc_counts = defaultdict(int)
 
@@ -74,13 +67,10 @@ class TextVectorizer:
             for word in unique_words:
                 word_doc_counts[word] += 1
 
-        # IDF = log(total_docs / docs_containing_word)
         self.idf_scores = {}
         for word in self.vocabulary:
             doc_freq = word_doc_counts[word]
-            self.idf_scores[word] = math.log(
-                doc_count / (doc_freq + 1)
-            )  # +1 for smoothing
+            self.idf_scores[word] = math.log(doc_count / (doc_freq + 1))
 
         self.is_fitted = True
 
@@ -92,14 +82,13 @@ class TextVectorizer:
         words = self._preprocess_text(text)
         word_counts = Counter(words)
 
-        # Calculate TF-IDF vector
         vector = [0.0] * len(self.vocabulary)
         total_words = len(words)
 
         for word, count in word_counts.items():
             if word in self.vocabulary:
-                tf = count / total_words  # Term frequency
-                idf = self.idf_scores[word]  # Inverse document frequency
+                tf = count / total_words
+                idf = self.idf_scores[word]
                 tfidf = tf * idf
 
                 word_idx = self.vocabulary[word]
@@ -125,21 +114,16 @@ class VectorMath:
         if len(vec1) != len(vec2):
             raise ValueError("Vectors must have the same length")
 
-        # Calculate dot product
         dot_product = sum(a * b for a, b in zip(vec1, vec2))
 
-        # Calculate magnitudes
         magnitude1 = math.sqrt(sum(a * a for a in vec1))
         magnitude2 = math.sqrt(sum(a * a for a in vec2))
 
-        # Handle zero vectors
         if magnitude1 == 0 or magnitude2 == 0:
             return 0.0
 
-        # Calculate cosine similarity
         similarity = dot_product / (magnitude1 * magnitude2)
 
-        # Clamp to [-1, 1] to handle floating point errors
         return max(-1.0, min(1.0, similarity))
 
     @staticmethod
@@ -173,7 +157,6 @@ class CustomVectorDB:
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Table for storing item vectors
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS item_vectors (
@@ -188,7 +171,6 @@ class CustomVectorDB:
             """
             )
 
-            # Table for storing vectorizer state
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS vectorizer_state (
@@ -253,13 +235,11 @@ class CustomVectorDB:
         """Build or rebuild the vector index from all receipt items."""
         from database.service import db_service
 
-        # Load existing vectorizer state if available
         if not force_rebuild and self._load_vectorizer_state():
             print("📚 Loaded existing vectorizer state")
         else:
             print("🔨 Building new vector index...")
 
-            # Get all receipt items
             receipts = db_service.get_all_receipts()
             all_items = []
             item_texts = []
@@ -275,7 +255,6 @@ class CustomVectorDB:
                             "price": float(item.total_price),
                         }
                     )
-                    # Create rich text representation for better vectorization
                     item_text = f"{item.item_name} {receipt.store_name}"
                     item_texts.append(item_text)
 
@@ -283,19 +262,16 @@ class CustomVectorDB:
                 print("⚠️ No items found to vectorize")
                 return
 
-            # Fit vectorizer on all item texts
             self.vectorizer.fit(item_texts)
             self._save_vectorizer_state()
 
             print(f"📊 Vectorizer vocabulary size: {len(self.vectorizer.vocabulary)}")
 
-        # Clear existing vectors
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM item_vectors")
             conn.commit()
 
-        # Generate and store vectors for all items
         from database.service import db_service
 
         receipts = db_service.get_all_receipts()
@@ -309,14 +285,11 @@ class CustomVectorDB:
                     if item.id is None:
                         continue
 
-                    # Create text representation
                     item_text = f"{item.item_name} {receipt.store_name}"
 
-                    # Generate vector
                     vector = self.vectorizer.transform(item_text)
                     vector_data = self._serialize_vector(vector)
 
-                    # Store metadata
                     metadata = {
                         "store_name": receipt.store_name,
                         "receipt_date": receipt.receipt_date.isoformat(),
@@ -325,7 +298,6 @@ class CustomVectorDB:
                     }
                     metadata_json = json.dumps(metadata)
 
-                    # Insert vector
                     cursor.execute(
                         """
                         INSERT INTO item_vectors (item_id, item_name, vector_data, metadata)
@@ -359,10 +331,8 @@ class CustomVectorDB:
                 print("⚠️ Vector index not built. Run build_index() first.")
                 return []
 
-        # Generate query vector
         query_vector = self.vectorizer.transform(query)
 
-        # Get all stored vectors
         results = []
         with self.db_manager.get_connection() as conn:
             cursor = conn.cursor()
@@ -373,10 +343,8 @@ class CustomVectorDB:
             for row in cursor.fetchall():
                 item_id, item_name, vector_data, metadata_json = row
 
-                # Deserialize vector
                 item_vector = self._deserialize_vector(vector_data)
 
-                # Calculate similarity
                 similarity = VectorMath.cosine_similarity(query_vector, item_vector)
 
                 if similarity >= min_similarity:
@@ -390,7 +358,6 @@ class CustomVectorDB:
                     )
                     results.append(result)
 
-        # Sort by similarity (descending) and return top_k
         results.sort(key=lambda x: x.similarity_score, reverse=True)
         return results[:top_k]
 
@@ -423,5 +390,4 @@ class CustomVectorDB:
             }
 
 
-# Global vector database instance
 vector_db = CustomVectorDB()

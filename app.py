@@ -11,15 +11,12 @@ from typing import Any, Dict, Optional
 
 import streamlit as st
 
-# Configure Streamlit page
 st.set_page_config(
     page_title="Food Receipt Analyzer",
     page_icon="🧾",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-# Import application components
 from config import config
 from database.connection import db_manager
 from database.service import db_service
@@ -55,7 +52,6 @@ class FoodReceiptAnalyzerApp:
     def setup_database(self):
         """Initialize database connection and schema."""
         try:
-            # Initialize database schema
             db_manager.initialize_database()
 
             if not st.session_state.app_initialized:
@@ -80,7 +76,6 @@ class FoodReceiptAnalyzerApp:
             st.title("🧾 Food Receipt Analyzer")
             st.write("Digitize, analyze, and query your food receipts with AI.")
 
-            # Navigation
             st.subheader("📍 Navigation")
 
             pages = {
@@ -105,12 +100,10 @@ class FoodReceiptAnalyzerApp:
 
             st.divider()
 
-            # Database statistics
             self.render_sidebar_stats()
 
             st.divider()
 
-            # Configuration status
             self.render_config_status()
 
     def render_sidebar_stats(self):
@@ -136,14 +129,12 @@ class FoodReceiptAnalyzerApp:
         """Render configuration status in the sidebar."""
         st.subheader("🔧 Configuration")
 
-        # Check OpenRouter API key
         if config.OPENROUTER_API_KEY:
             st.success("✅ AI Queries Enabled")
         else:
             st.warning("⚠️ AI Queries Disabled")
             st.caption("Set OPENROUTER_API_KEY in .env")
 
-        # Check database
         try:
             db_service.get_database_stats()
             st.success("✅ Database Connected")
@@ -151,7 +142,6 @@ class FoodReceiptAnalyzerApp:
             st.error("❌ Database Error")
             st.caption(f"Error: {str(e)[:50]}...")
 
-        # Check upload folder
         try:
             upload_path = config.get_upload_path()
             if os.path.exists(upload_path) and os.access(upload_path, os.W_OK):
@@ -182,15 +172,12 @@ class FoodReceiptAnalyzerApp:
         """Render the receipt upload page."""
         st.title("📤 Upload Receipt")
 
-        # Upload interface
         result = upload_interface.render_upload_section()
 
-        # Display results if processing was successful
         if result:
             st.session_state.last_processed_receipt = result
             upload_interface.render_extracted_data_display(result)
 
-            # Success actions
             st.subheader("🎉 What's Next?")
             col1, col2 = st.columns(2)
 
@@ -206,17 +193,14 @@ class FoodReceiptAnalyzerApp:
                     st.session_state.current_page = "dashboard"
                     st.rerun()
 
-        # Recent receipts section
         self.render_recent_receipts()
 
     def render_query_page(self):
         """Render the natural language query page."""
         st.title("🤖 Ask Questions")
 
-        # Query interface
         query_interface.render_query_section()
 
-        # Query statistics
         query_interface.render_query_stats()
 
     def render_dashboard_page(self):
@@ -235,7 +219,6 @@ class FoodReceiptAnalyzerApp:
                     st.rerun()
                 return
 
-            # Overview metrics
             st.subheader("📈 Overview")
             col1, col2, col3, col4 = st.columns(4)
 
@@ -255,7 +238,6 @@ class FoodReceiptAnalyzerApp:
                 else:
                     st.metric("Avg per Receipt", "$0.00")
 
-            # Recent activity
             st.subheader("🕒 Recent Activity")
             recent_receipts = db_service.get_all_receipts(limit=5)
 
@@ -285,7 +267,6 @@ class FoodReceiptAnalyzerApp:
                                     f"Uploaded: {receipt.upload_timestamp.strftime('%H:%M')}"
                                 )
 
-            # Quick actions
             st.subheader("⚡ Quick Actions")
             col1, col2, col3 = st.columns(3)
 
@@ -310,10 +291,8 @@ class FoodReceiptAnalyzerApp:
         """Render the settings and configuration page."""
         st.title("⚙️ Settings")
 
-        # Configuration section
         st.subheader("🔧 Configuration")
 
-        # API Configuration
         with st.expander("🤖 AI Query Configuration"):
             st.write("**OpenRouter API Configuration**")
 
@@ -328,7 +307,6 @@ class FoodReceiptAnalyzerApp:
                 )
                 st.code("OPENROUTER_API_KEY=your_api_key_here")
 
-        # Database Configuration
         with st.expander("💾 Database Configuration"):
             st.write(f"**Database Path:** {config.DATABASE_PATH}")
 
@@ -341,11 +319,9 @@ class FoodReceiptAnalyzerApp:
             except Exception as e:
                 st.error(f"❌ Database error: {str(e)}")
 
-        # Vector Search Configuration
         with st.expander("🔍 Vector Search Configuration"):
             self._check_vector_search_status()
 
-        # File Upload Configuration
         with st.expander("📁 File Upload Configuration"):
             st.write(f"**Upload Folder:** {config.UPLOAD_FOLDER}")
             st.write(f"**Max File Size:** {config.MAX_FILE_SIZE_MB} MB")
@@ -356,15 +332,12 @@ class FoodReceiptAnalyzerApp:
             else:
                 st.error("❌ Upload folder missing")
 
-        # OCR Configuration
         with st.expander("🔍 OCR Configuration (Tesseract)"):
             self._check_tesseract_status()
 
-        # System Information
         with st.expander("💻 System Information"):
             self._display_system_info()
 
-        # Data Management
         st.subheader("🗂️ Data Management")
 
         col1, col2 = st.columns(2)
@@ -379,7 +352,6 @@ class FoodReceiptAnalyzerApp:
                     st.session_state.query_history = []
                     st.success("Query history cleared!")
 
-        # Danger Zone
         with st.expander("⚠️ Danger Zone", expanded=False):
             st.warning("These actions cannot be undone!")
 
@@ -430,11 +402,9 @@ class FoodReceiptAnalyzerApp:
         try:
             import pytesseract
 
-            # Try to get Tesseract version
             version = pytesseract.get_tesseract_version()
             st.success(f"✅ Tesseract OCR installed (v{version})")
 
-            # Show Tesseract path
             try:
                 tesseract_cmd = pytesseract.pytesseract.tesseract_cmd
                 st.write(f"**Path:** {tesseract_cmd}")
@@ -496,7 +466,6 @@ class FoodReceiptAnalyzerApp:
         st.write(f"**Platform:** {platform.system()} {platform.release()}")
         st.write(f"**Architecture:** {platform.machine()}")
 
-        # Check key dependencies
         dependencies = {
             "streamlit": "Streamlit",
             "opencv-python": "OpenCV",
@@ -526,13 +495,11 @@ class FoodReceiptAnalyzerApp:
 
     def render_error_boundary(self, error: Exception):
         """Render error boundary for unhandled exceptions."""
-        # Use error handler to get structured error information
         error_response = error_handler.handle_error(
             error, context={"page": st.session_state.get("current_page", "unknown")}
         )
         error_info = error_response["error"]
 
-        # Display error with appropriate severity styling
         if error_info["severity"] == "critical":
             st.error("🚨 Critical Application Error")
         elif error_info["severity"] == "high":
@@ -542,13 +509,11 @@ class FoodReceiptAnalyzerApp:
 
         st.write(f"**Error:** {error_info['message']}")
 
-        # Show recovery suggestions
         if error_info.get("recovery_suggestions"):
             st.write("**What you can try:**")
             for suggestion in error_info["recovery_suggestions"]:
                 st.write(f"• {suggestion}")
 
-        # Action buttons
         col1, col2, col3 = st.columns(3)
 
         with col1:
@@ -564,7 +529,6 @@ class FoodReceiptAnalyzerApp:
             if st.button("📊 View Error Stats"):
                 self._show_error_statistics()
 
-        # Technical details (collapsible)
         with st.expander("🔧 Technical Details"):
             st.write(f"**Category:** {error_info['category']}")
             st.write(f"**Severity:** {error_info['severity']}")
@@ -574,7 +538,6 @@ class FoodReceiptAnalyzerApp:
             if error_response.get("technical_details"):
                 st.json(error_response["technical_details"])
 
-            # Show full exception for debugging
             if st.checkbox("Show full exception"):
                 st.exception(error)
 
@@ -597,10 +560,9 @@ class FoodReceiptAnalyzerApp:
         with col2:
             if stats["recent_errors"]:
                 st.write("**Recent Errors:**")
-                for error in stats["recent_errors"][-5:]:  # Last 5
+                for error in stats["recent_errors"][-5:]:
                     st.write(f"• {error['category']}: {error['message'][:50]}...")
 
-        # Clear error history button
         if st.button("🗑️ Clear Error History"):
             error_handler.error_counts.clear()
             error_handler.last_errors.clear()
@@ -610,13 +572,10 @@ class FoodReceiptAnalyzerApp:
     def run(self):
         """Run the main application."""
         try:
-            # Render sidebar
             self.render_sidebar()
 
-            # Render main content
             self.render_main_content()
 
-            # Footer
             st.divider()
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:

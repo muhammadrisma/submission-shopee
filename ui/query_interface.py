@@ -18,7 +18,7 @@ class QueryInterface:
     def __init__(self):
         """Initialize the query interface."""
         self.ai_service = get_ai_query_service()
-        self.max_history = 50  # Maximum number of queries to keep in history
+        self.max_history = 50
 
     def render_query_section(self):
         """
@@ -27,7 +27,6 @@ class QueryInterface:
         st.header("🤖 Ask About Your Receipts")
         st.write("Ask questions about your food purchases in natural language.")
 
-        # Check if AI service is available
         if not self.ai_service:
             st.error(
                 "❌ AI query service is not available. Please check your OpenRouter API key configuration."
@@ -37,24 +36,19 @@ class QueryInterface:
             )
             return
 
-        # Initialize session state for query history
         if "query_history" not in st.session_state:
             st.session_state.query_history = []
 
-        # Query suggestions
         self._render_query_suggestions()
 
-        # Main query input
         self._render_query_input()
 
-        # Query history
         self._render_query_history()
 
     def _render_query_suggestions(self):
         """Render example query suggestions."""
         st.subheader("💡 Try These Examples")
 
-        # Get base suggestions and add vector search examples
         base_suggestions = self.ai_service.get_query_suggestions()
         vector_suggestions = [
             "find chicken food",
@@ -66,7 +60,6 @@ class QueryInterface:
 
         suggestions = base_suggestions + vector_suggestions
 
-        # Display suggestions in columns
         cols = st.columns(2)
         for i, suggestion in enumerate(suggestions):
             col = cols[i % 2]
@@ -74,7 +67,6 @@ class QueryInterface:
                 if st.button(
                     f"💬 {suggestion}", key=f"suggestion_{i}", use_container_width=True
                 ):
-                    # Set the suggestion as the current query
                     st.session_state.current_query = suggestion
                     st.rerun()
 
@@ -82,7 +74,6 @@ class QueryInterface:
         """Render the main query input interface."""
         st.subheader("💬 Ask Your Question")
 
-        # Text input for query
         query = st.text_input(
             "Enter your question:",
             value=st.session_state.get("current_query", ""),
@@ -91,11 +82,9 @@ class QueryInterface:
             key="query_input",
         )
 
-        # Clear the current_query after using it
         if "current_query" in st.session_state:
             del st.session_state.current_query
 
-        # Submit button
         col1, col2 = st.columns([1, 4])
 
         with col1:
@@ -109,7 +98,6 @@ class QueryInterface:
                 st.success("Query history cleared!")
                 st.rerun()
 
-        # Process query if submitted
         if submit_clicked and query.strip():
             self._process_query(query.strip())
 
@@ -120,42 +108,33 @@ class QueryInterface:
         Args:
             query: The natural language query string
         """
-        # Create loading indicators
         with st.spinner("🤔 Processing your query..."):
             progress_bar = st.progress(0)
             status_text = st.empty()
 
             try:
-                # Step 1: Parse query
                 status_text.text("📝 Understanding your question...")
                 progress_bar.progress(25)
-                time.sleep(0.5)  # Brief pause for UX
+                time.sleep(0.5)
 
-                # Step 2: Search database
                 status_text.text("🔍 Searching your receipts...")
                 progress_bar.progress(50)
 
-                # Process the query
                 result = self.ai_service.process_query(query)
 
-                # Step 3: Format response
                 status_text.text("✨ Formatting response...")
                 progress_bar.progress(75)
                 time.sleep(0.3)
 
-                # Step 4: Complete
                 status_text.text("✅ Done!")
                 progress_bar.progress(100)
                 time.sleep(0.2)
 
-                # Clear loading indicators
                 progress_bar.empty()
                 status_text.empty()
 
-                # Add to history
                 self._add_to_history(query, result)
 
-                # Display result
                 self._display_query_result(query, result)
 
             except Exception as e:
@@ -172,10 +151,8 @@ class QueryInterface:
             "id": len(st.session_state.query_history),
         }
 
-        # Add to beginning of history (most recent first)
         st.session_state.query_history.insert(0, history_item)
 
-        # Limit history size
         if len(st.session_state.query_history) > self.max_history:
             st.session_state.query_history = st.session_state.query_history[
                 : self.max_history
@@ -192,10 +169,8 @@ class QueryInterface:
         st.subheader("💬 Response")
 
         if result["success"]:
-            # Display the formatted response
             st.write(result["formatted_response"])
 
-            # Show vector search indicator if applicable
             if result["parsed_query"]["intent"] == "semantic_search":
                 if result["results"] and "similarity_score" in result["results"][0]:
                     top_similarity = result["results"][0]["similarity_score"]
@@ -205,7 +180,6 @@ class QueryInterface:
                 else:
                     st.info("🔍 **Vector Search Used** - No similar items found")
 
-            # Show additional details in an expander
             with st.expander("📊 Query Details"):
                 col1, col2 = st.columns(2)
 
@@ -221,7 +195,6 @@ class QueryInterface:
                     confidence = result["parsed_query"].get("confidence", 0)
                     st.metric("Confidence", f"{confidence:.1%}")
 
-                # Show similarity scores for vector search
                 if (
                     result["parsed_query"]["intent"] == "semantic_search"
                     and result["results"]
@@ -233,12 +206,10 @@ class QueryInterface:
                                 f"{i+1}. **{res['item_name']}**: {res['similarity_score']:.1%} similar"
                             )
 
-                # Show raw results if available
                 if result["results"]:
                     st.subheader("Raw Data")
                     st.json(result["results"])
         else:
-            # Display error
             st.error(result["formatted_response"])
 
             with st.expander("🔧 Error Details"):
@@ -252,20 +223,17 @@ class QueryInterface:
 
         st.subheader("📚 Query History")
 
-        # Show recent queries
-        for i, item in enumerate(st.session_state.query_history[:10]):  # Show last 10
+        for i, item in enumerate(st.session_state.query_history[:10]):
             with st.expander(
                 f"💬 {item['query'][:50]}{'...' if len(item['query']) > 50 else ''} "
                 f"({item['timestamp'].strftime('%H:%M:%S')})"
             ):
-                # Show query details
                 st.write(f"**Query:** {item['query']}")
                 st.write(f"**Time:** {item['timestamp'].strftime('%Y-%m-%d %H:%M:%S')}")
 
                 if item["result"]["success"]:
                     st.write(f"**Response:** {item['result']['formatted_response']}")
 
-                    # Quick stats
                     col1, col2, col3 = st.columns(3)
                     with col1:
                         st.metric("Results", len(item["result"]["results"]))
@@ -277,7 +245,6 @@ class QueryInterface:
                 else:
                     st.error(f"**Error:** {item['result']['formatted_response']}")
 
-                # Re-run button
                 if st.button(f"🔄 Re-run Query", key=f"rerun_{item['id']}"):
                     self._process_query(item["query"])
 
@@ -290,7 +257,6 @@ class QueryInterface:
 
         history = st.session_state.query_history
 
-        # Basic stats
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -315,12 +281,11 @@ class QueryInterface:
                     item
                     for item in history
                     if (datetime.now() - item["timestamp"]).seconds < 3600
-                ]  # Last hour
+                ]
                 st.metric("Last Hour", len(recent_queries))
             else:
                 st.metric("Last Hour", "0")
 
-        # Intent distribution
         if len(history) > 0:
             intent_counts = {}
             for item in history:
@@ -339,5 +304,4 @@ class QueryInterface:
                     )
 
 
-# Global query interface instance
 query_interface = QueryInterface()

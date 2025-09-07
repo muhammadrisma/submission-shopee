@@ -32,7 +32,7 @@ class ReceiptUploadInterface:
     def __init__(self):
         """Initialize the upload interface."""
         self.cv_service = ComputerVisionService()
-        self.max_file_size = config.MAX_FILE_SIZE_MB * 1024 * 1024  # Convert to bytes
+        self.max_file_size = config.MAX_FILE_SIZE_MB * 1024 * 1024
         self.allowed_extensions = config.ALLOWED_EXTENSIONS
 
     def render_upload_section(self) -> Optional[Dict[str, Any]]:
@@ -45,7 +45,6 @@ class ReceiptUploadInterface:
             "Upload a food receipt image to extract and analyze your purchase data."
         )
 
-        # File upload widget
         uploaded_file = st.file_uploader(
             "Choose a receipt image",
             type=self.allowed_extensions,
@@ -53,13 +52,11 @@ class ReceiptUploadInterface:
         )
 
         if uploaded_file is not None:
-            # Validate file
             validation_result = self._validate_uploaded_file(uploaded_file)
 
             if not validation_result["valid"]:
                 st.error(f"❌ {validation_result['error']}")
 
-                # Show recovery suggestions if available
                 if validation_result.get("recovery_suggestions"):
                     with st.expander("💡 How to Fix This"):
                         for suggestion in validation_result["recovery_suggestions"]:
@@ -67,13 +64,10 @@ class ReceiptUploadInterface:
 
                 return None
 
-            # Display file info
             self._display_file_info(uploaded_file)
 
-            # Show image preview
             self._display_image_preview(uploaded_file)
 
-            # Process button
             if st.button("🔍 Process Receipt", type="primary"):
                 return self._process_uploaded_receipt(uploaded_file)
 
@@ -90,14 +84,12 @@ class ReceiptUploadInterface:
             Dictionary with validation result and error message if any
         """
         try:
-            # Use comprehensive file validator
             validation_result = file_validator.validate_file(
                 uploaded_file, uploaded_file.name
             )
             return {"valid": True, "error": None, "details": validation_result}
 
         except Exception as e:
-            # Handle validation errors
             error_response = error_handler.handle_error(e)
             error_info = error_response["error"]
 
@@ -130,7 +122,6 @@ class ReceiptUploadInterface:
 
             st.subheader("📷 Image Preview")
 
-            # Resize image for preview if too large
             max_width = 600
             if image.width > max_width:
                 ratio = max_width / image.width
@@ -139,7 +130,7 @@ class ReceiptUploadInterface:
 
             st.image(image, caption="Receipt Preview", use_column_width=True)
 
-            uploaded_file.seek(0)  # Reset file pointer
+            uploaded_file.seek(0)
 
         except Exception as e:
             st.warning(f"Could not display image preview: {str(e)}")
@@ -154,47 +145,39 @@ class ReceiptUploadInterface:
         Returns:
             Processed receipt data or None if processing failed
         """
-        # Create progress indicators
         progress_bar = st.progress(0)
         status_text = st.empty()
 
         temp_file_path = None
 
         try:
-            # Step 1: Save uploaded file temporarily
             status_text.text("💾 Saving uploaded file...")
             progress_bar.progress(20)
 
             temp_file_path = self._save_temp_file(uploaded_file)
 
-            # Step 2: Process with computer vision
             status_text.text("🔍 Extracting text from receipt...")
             progress_bar.progress(40)
 
             processed_data = self.cv_service.process_receipt(temp_file_path)
 
-            # Step 3: Create receipt object
             status_text.text("📋 Parsing receipt data...")
             progress_bar.progress(60)
 
             receipt = self._create_receipt_from_data(processed_data, temp_file_path)
 
-            # Step 4: Save to database
             status_text.text("💾 Saving to database...")
             progress_bar.progress(80)
 
             receipt_id = db_service.save_receipt(receipt)
             receipt.id = receipt_id
 
-            # Step 5: Complete
             status_text.text("✅ Processing complete!")
             progress_bar.progress(100)
 
-            # Clean up temp file
             self._cleanup_temp_file(temp_file_path)
-            temp_file_path = None  # Mark as cleaned up
+            temp_file_path = None
 
-            # Display success message
             success_msg = (
                 f"Receipt processed successfully! Extracted {len(receipt.items)} items."
             )
@@ -205,7 +188,6 @@ class ReceiptUploadInterface:
 
             st.success(success_msg)
 
-            # Show warnings if any
             if processed_data.get("processing_warnings"):
                 with st.expander("⚠️ Processing Warnings"):
                     for warning in processed_data["processing_warnings"]:
@@ -214,7 +196,6 @@ class ReceiptUploadInterface:
             return {"receipt": receipt, "processed_data": processed_data}
 
         except Exception as e:
-            # Handle errors with comprehensive error handling
             error_response = error_handler.handle_error(
                 e,
                 context={
@@ -224,7 +205,6 @@ class ReceiptUploadInterface:
             )
             error_info = error_response["error"]
 
-            # Display error with category-specific styling
             if error_info["category"] == "ocr":
                 st.error(f"🔍 OCR Error: {error_info['message']}")
             elif error_info["category"] == "file_system":
@@ -234,13 +214,11 @@ class ReceiptUploadInterface:
             else:
                 st.error(f"❌ Error: {error_info['message']}")
 
-            # Show recovery suggestions
             if error_info.get("recovery_suggestions"):
                 with st.expander("💡 How to Fix This"):
                     for suggestion in error_info["recovery_suggestions"]:
                         st.write(f"• {suggestion}")
 
-            # Show technical details for debugging
             if st.checkbox("Show technical details", key="show_tech_details"):
                 with st.expander("🔧 Technical Details"):
                     st.write(f"**Error Category:** {error_info['category']}")
@@ -255,19 +233,16 @@ class ReceiptUploadInterface:
             return None
 
         finally:
-            # Always clean up temp file
             if temp_file_path:
                 self._cleanup_temp_file(temp_file_path)
 
     def _save_temp_file(self, uploaded_file) -> str:
         """Save uploaded file to temporary location for processing."""
-        # Create temp file with proper extension
         file_extension = uploaded_file.name.split(".")[-1].lower()
         temp_file = tempfile.NamedTemporaryFile(
             delete=False, suffix=f".{file_extension}", dir=config.get_upload_path()
         )
 
-        # Copy uploaded file content to temp file
         uploaded_file.seek(0)
         shutil.copyfileobj(uploaded_file, temp_file)
         temp_file.close()
@@ -286,7 +261,6 @@ class ReceiptUploadInterface:
         self, processed_data: Dict[str, Any], image_path: str
     ) -> Receipt:
         """Create Receipt object from processed computer vision data."""
-        # Create receipt items
         items = []
         for item_data in processed_data.get("items", []):
             item = ReceiptItem(
@@ -297,7 +271,6 @@ class ReceiptUploadInterface:
             )
             items.append(item)
 
-        # Create receipt
         receipt = Receipt(
             store_name=processed_data.get("store_name", "Unknown Store"),
             receipt_date=processed_data.get("receipt_date"),
@@ -323,7 +296,6 @@ class ReceiptUploadInterface:
 
         st.header("📊 Extracted Receipt Data")
 
-        # Receipt summary
         col1, col2, col3 = st.columns(3)
 
         with col1:
@@ -335,11 +307,9 @@ class ReceiptUploadInterface:
         with col3:
             st.metric("Total Amount", f"${receipt.total_amount:.2f}")
 
-        # Items table
         if receipt.items:
             st.subheader("🛒 Items")
 
-            # Create items data for display
             items_data = []
             for item in receipt.items:
                 items_data.append(
@@ -353,7 +323,6 @@ class ReceiptUploadInterface:
 
             st.dataframe(items_data, use_container_width=True)
 
-            # Items summary
             total_items = sum(item.quantity for item in receipt.items)
             st.info(
                 f"📦 Total items: {total_items} | 🏷️ Unique products: {len(receipt.items)}"
@@ -361,21 +330,18 @@ class ReceiptUploadInterface:
         else:
             st.warning("No items were extracted from the receipt.")
 
-        # Raw text section (collapsible)
         with st.expander("📝 Raw Extracted Text"):
             if receipt.raw_text:
                 st.text(receipt.raw_text)
             else:
                 st.write("No raw text available.")
 
-        # Data validation warnings
         self._display_validation_warnings(receipt)
 
     def _display_validation_warnings(self, receipt: Receipt):
         """Display any validation warnings about the extracted data."""
         warnings = []
 
-        # Check total consistency
         if not receipt.validate_total_consistency():
             items_total = receipt.calculate_items_total()
             difference = abs(receipt.total_amount - items_total)
@@ -384,19 +350,16 @@ class ReceiptUploadInterface:
                 f"vs items sum (${items_total:.2f}). Difference: ${difference:.2f}"
             )
 
-        # Check for missing data
         if receipt.store_name == "Unknown Store":
             warnings.append("⚠️ Store name could not be determined from the receipt.")
 
         if not receipt.items:
             warnings.append("⚠️ No items were extracted from the receipt.")
 
-        # Display warnings
         if warnings:
             st.warning("Data Quality Warnings:")
             for warning in warnings:
                 st.write(warning)
 
 
-# Global upload interface instance
 upload_interface = ReceiptUploadInterface()

@@ -1,6 +1,11 @@
 # Food Receipt Analyzer - Development Makefile
-
 .PHONY: install test test-unit test-integration test-error-handling demo clean lint format help
+
+isort:
+	isort .
+
+black:
+	black .
 
 # Installation and setup
 install:

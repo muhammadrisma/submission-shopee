@@ -7,14 +7,13 @@ import re
 
 from services.computer_vision import ReceiptParser
 
-# Sample text from your receipt
 sample_text = """🧾 Receipt Details
 Store: Burrito Bar – Authentic Mexican Joint
 Address: 900 Kirkwood Ave, West Hollywood, CA
 Date: 12/14/2018
 Time: 11:43 AM
 Host: Maura
-Order #: 391
+Order
 
 🍽️ Items Purchased
 Chicken Burrito — $8.79
@@ -42,7 +41,6 @@ def debug_item_extraction():
     print(f"Total lines: {len(lines)}")
     print()
 
-    # Test each pattern
     for i, pattern in enumerate(parser.item_patterns):
         print(f"Pattern {i+1}: {pattern}")
         matches = []
@@ -64,7 +62,6 @@ def debug_item_extraction():
             print(f"  ❌ No matches")
         print()
 
-    # Test the actual parsing
     print("🧾 Full Parsing Result:")
     print("=" * 50)
 
