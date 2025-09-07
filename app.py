@@ -317,6 +317,10 @@ class FoodReceiptAnalyzerApp:
             except Exception as e:
                 st.error(f"❌ Database error: {str(e)}")
         
+        # Vector Search Configuration
+        with st.expander("🔍 Vector Search Configuration"):
+            self._check_vector_search_status()
+        
         # File Upload Configuration
         with st.expander("📁 File Upload Configuration"):
             st.write(f"**Upload Folder:** {config.UPLOAD_FOLDER}")
@@ -420,6 +424,38 @@ class FoodReceiptAnalyzerApp:
             
             if st.button("📖 View Installation Guide"):
                 st.info("Check the INSTALLATION.md file for detailed installation instructions.")
+    
+    def _check_vector_search_status(self):
+        """Check and display vector search status."""
+        try:
+            from services.vector_db import vector_db
+            
+            stats = vector_db.get_stats()
+            
+            if stats['vector_count'] > 0:
+                st.success(f"✅ Vector search ready ({stats['vector_count']} vectors)")
+                st.write(f"**Vocabulary size:** {stats['vocabulary_size']} words")
+                
+                if st.button("🔄 Rebuild Vector Index"):
+                    with st.spinner("Rebuilding vector index..."):
+                        vector_db.build_index(force_rebuild=True)
+                        st.success("Vector index rebuilt!")
+                        st.rerun()
+            else:
+                st.warning("⚠️ Vector index not built")
+                if st.button("🔨 Build Vector Index"):
+                    with st.spinner("Building vector index..."):
+                        vector_db.build_index()
+                        st.success("Vector index built!")
+                        st.rerun()
+            
+            st.write("**Semantic search queries:**")
+            st.write("• 'find chicken food'")
+            st.write("• 'search for apple'") 
+            st.write("• 'similar to burrito'")
+            
+        except Exception as e:
+            st.error(f"❌ Vector search error: {str(e)}")
     
     def _display_system_info(self):
         """Display system information for troubleshooting."""

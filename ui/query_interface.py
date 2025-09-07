@@ -49,7 +49,17 @@ class QueryInterface:
         """Render example query suggestions."""
         st.subheader("💡 Try These Examples")
         
-        suggestions = self.ai_service.get_query_suggestions()
+        # Get base suggestions and add vector search examples
+        base_suggestions = self.ai_service.get_query_suggestions()
+        vector_suggestions = [
+            "find chicken food",
+            "search for apple fruit", 
+            "similar to burrito",
+            "mexican cuisine",
+            "dairy products"
+        ]
+        
+        suggestions = base_suggestions + vector_suggestions
         
         # Display suggestions in columns
         cols = st.columns(2)
@@ -174,6 +184,14 @@ class QueryInterface:
             # Display the formatted response
             st.write(result['formatted_response'])
             
+            # Show vector search indicator if applicable
+            if result['parsed_query']['intent'] == 'semantic_search':
+                if result['results'] and 'similarity_score' in result['results'][0]:
+                    top_similarity = result['results'][0]['similarity_score']
+                    st.info(f"🔍 **Vector Search Used** - Top similarity: {top_similarity:.1%}")
+                else:
+                    st.info("🔍 **Vector Search Used** - No similar items found")
+            
             # Show additional details in an expander
             with st.expander("📊 Query Details"):
                 col1, col2 = st.columns(2)
@@ -186,6 +204,13 @@ class QueryInterface:
                     st.metric("Results Found", len(result['results']))
                     confidence = result['parsed_query'].get('confidence', 0)
                     st.metric("Confidence", f"{confidence:.1%}")
+                
+                # Show similarity scores for vector search
+                if result['parsed_query']['intent'] == 'semantic_search' and result['results']:
+                    st.subheader("🎯 Similarity Scores")
+                    for i, res in enumerate(result['results'][:5]):
+                        if 'similarity_score' in res:
+                            st.write(f"{i+1}. **{res['item_name']}**: {res['similarity_score']:.1%} similar")
                 
                 # Show raw results if available
                 if result['results']:

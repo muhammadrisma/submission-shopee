@@ -13,6 +13,7 @@ import requests
 from config import config
 from database.service import db_service
 from models.receipt import Receipt, ReceiptItem
+from services.vector_db import vector_db
 
 
 class OpenRouterClient:
@@ -62,6 +63,10 @@ class QueryParser:
     
     def __init__(self):
         """Initialize the query parser with patterns."""
+        self.semantic_keywords = {
+            'similar', 'like', 'related', 'comparable', 'resembling',
+            'find', 'search', 'look', 'discover', 'match'
+        }
         self.date_patterns = {
             'yesterday': lambda: date.today() - timedelta(days=1),
             'today': lambda: date.today(),
@@ -78,6 +83,10 @@ class QueryParser:
         """
         query_lower = query.lower().strip()
         
+        # Check for semantic search intent first
+        if any(word in query_lower for word in self.semantic_keywords):
+            return self._parse_semantic_query(query_lower)
+        
         # Determine query intent
         if any(word in query_lower for word in ['what', 'which', 'show', 'list']):
             if any(word in query_lower for word in ['buy', 'bought', 'purchase', 'food', 'item']):
@@ -90,6 +99,15 @@ class QueryParser:
             return self._parse_store_query(query_lower)
         
         # Default fallback
+        # Check if this might be a semantic search query
+        if len(query_lower.split()) <= 5:  # Short queries are likely semantic
+            return {
+                'intent': 'semantic_search',
+                'query': query,
+                'parameters': {'search_term': query_lower},
+                'confidence': 0.6
+            }
+        
         return {
             'intent': 'general',
             'query': query,
@@ -142,6 +160,34 @@ class QueryParser:
                 'days_back': date_info.get('days_back')
             },
             'confidence': 0.8
+        }
+    
+    def _parse_semantic_query(self, query: str) -> Dict[str, Any]:
+        """Parse queries asking for semantic similarity."""
+        # Extract the item/concept they're looking for
+        search_term = query
+        
+        # Remove semantic keywords to get the core search term
+        for keyword in self.semantic_keywords:
+            search_term = search_term.replace(keyword, '').strip()
+        
+        # Remove common words
+        common_words = ['to', 'for', 'items', 'food', 'things', 'stuff']
+        for word in common_words:
+            search_term = search_term.replace(word, '').strip()
+        
+        date_info = self._extract_date_info(query)
+        
+        return {
+            'intent': 'semantic_search',
+            'query': query,
+            'parameters': {
+                'search_term': search_term,
+                'date_range': date_info.get('date_range'),
+                'specific_date': date_info.get('specific_date'),
+                'days_back': date_info.get('days_back')
+            },
+            'confidence': 0.9
         }
     
     def _extract_date_info(self, query: str) -> Dict[str, Any]:
@@ -263,6 +309,8 @@ class SQLQueryGenerator:
             return self._query_spending(params)
         elif intent == 'find_stores':
             return self._query_stores(params)
+        elif intent == 'semantic_search':
+            return self._query_semantic(params)
         else:
             return []
     
@@ -386,6 +434,35 @@ class SQLQueryGenerator:
             }]
         
         return []
+    
+    def _query_semantic(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Query using semantic similarity search."""
+        search_term = params.get('search_term', '')
+        if not search_term:
+            return []
+        
+        # Ensure vector index is built
+        stats = vector_db.get_stats()
+        if stats['vector_count'] == 0:
+            vector_db.build_index()
+        
+        # Perform semantic search
+        results = vector_db.semantic_search(search_term, top_k=10)
+        
+        # Convert to standard format
+        formatted_results = []
+        for result in results:
+            formatted_results.append({
+                'item_name': result.item_name,
+                'quantity': 1,  # Default quantity
+                'unit_price': result.metadata.get('price', 0),
+                'total_price': result.metadata.get('price', 0),
+                'store_name': result.metadata.get('store_name', 'Unknown'),
+                'receipt_date': datetime.fromisoformat(result.metadata.get('receipt_date', '2024-01-01')).date(),
+                'similarity_score': result.similarity_score
+            })
+        
+        return formatted_results
 
 
 class ResponseFormatter:
@@ -408,6 +485,8 @@ class ResponseFormatter:
             return self._format_spending_response(results, query)
         elif intent == 'find_stores':
             return self._format_stores_response(results, query)
+        elif intent == 'semantic_search':
+            return self._format_semantic_response(results, query)
         else:
             return self._format_general_response(results, query)
     
@@ -465,6 +544,35 @@ class ResponseFormatter:
             return f"Your total food expenses over the last {days} days were ${total:.2f}."
         
         return f"Your total food expenses were ${total:.2f}."
+    
+    def _format_semantic_response(self, results: List[Dict[str, Any]], query: str) -> str:
+        """Format semantic search response."""
+        if len(results) == 0:
+            return "I couldn't find any similar items matching your search."
+        
+        # Group items by similarity score ranges
+        high_similarity = [r for r in results if r.get('similarity_score', 0) > 0.5]
+        medium_similarity = [r for r in results if 0.3 < r.get('similarity_score', 0) <= 0.5]
+        
+        response_parts = []
+        
+        if high_similarity:
+            response_parts.append(f"Found {len(high_similarity)} highly similar items:")
+            for item in high_similarity:
+                similarity = item.get('similarity_score', 0)
+                response_parts.append(f"• {item['item_name']} (similarity: {similarity:.1%}) - ${item['total_price']:.2f} from {item['store_name']}")
+        
+        if medium_similarity:
+            if high_similarity:
+                response_parts.append(f"\nAlso found {len(medium_similarity)} moderately similar items:")
+            else:
+                response_parts.append(f"Found {len(medium_similarity)} similar items:")
+            
+            for item in medium_similarity[:3]:  # Limit to top 3
+                similarity = item.get('similarity_score', 0)
+                response_parts.append(f"• {item['item_name']} (similarity: {similarity:.1%}) - ${item['total_price']:.2f} from {item['store_name']}")
+        
+        return "\n".join(response_parts)
     
     def _format_stores_response(self, results: List[Dict[str, Any]], query: str) -> str:
         """Format stores list response."""
