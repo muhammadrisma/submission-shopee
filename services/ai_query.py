@@ -162,6 +162,18 @@ class QueryParser:
             result['days_back'] = days
             return result
         
+        # Check for year patterns like "in 2018", "from 2018"
+        year_match = re.search(r'(?:in|from)\s+(\d{4})', query)
+        if year_match:
+            year = int(year_match.group(1))
+            try:
+                start_date = date(year, 1, 1)
+                end_date = date(year, 12, 31)
+                result['date_range'] = (start_date, end_date)
+                return result
+            except ValueError:
+                pass
+        
         # Check for relative date patterns
         for pattern, date_func in self.date_patterns.items():
             if pattern in query:
@@ -308,7 +320,20 @@ class SQLQueryGenerator:
                     })
             return items
         
-        return []
+        # Fallback: if no date parameters, return all items
+        receipts = self.db_service.get_all_receipts()
+        items = []
+        for receipt in receipts:
+            for item in receipt.items:
+                items.append({
+                    'item_name': item.item_name,
+                    'quantity': item.quantity,
+                    'unit_price': item.unit_price,
+                    'total_price': item.total_price,
+                    'store_name': receipt.store_name,
+                    'receipt_date': receipt.receipt_date
+                })
+        return items
     
     def _query_spending(self, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Query for spending totals based on date parameters."""
