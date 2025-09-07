@@ -52,7 +52,9 @@ def test_streamlit_integration():
                     if result["results"]:
                         top_result = result["results"][0]
                         if "similarity_score" in top_result:
-                            print(f"   🎯 Top similarity: {top_result['similarity_score']:.1%}")
+                            print(
+                                f"   🎯 Top similarity: {top_result['similarity_score']:.1%}"
+                            )
                 else:
                     print("   📋 Using traditional SQL search")
             else:

@@ -37,7 +37,14 @@ class TestImagePreprocessor:
     @patch("services.computer_vision.ImagePreprocessor._enhance_contrast")
     @patch("services.computer_vision.ImagePreprocessor._morphological_cleanup")
     def test_preprocess_image_success(
-        self, mock_cleanup, mock_enhance, mock_reduce, mock_cvt, mock_imread, mock_exists, mock_access
+        self,
+        mock_cleanup,
+        mock_enhance,
+        mock_reduce,
+        mock_cvt,
+        mock_imread,
+        mock_exists,
+        mock_access,
     ):
         """Test successful image preprocessing."""
         mock_exists.return_value = True
@@ -270,7 +277,9 @@ class TestComputerVisionService:
     @patch("services.computer_vision.ImagePreprocessor.preprocess_image")
     @patch("services.computer_vision.OCRService.extract_text")
     @patch("services.computer_vision.ReceiptParser.parse_receipt")
-    def test_process_receipt_success(self, mock_parse, mock_ocr, mock_preprocess, mock_exists, mock_access):
+    def test_process_receipt_success(
+        self, mock_parse, mock_ocr, mock_preprocess, mock_exists, mock_access
+    ):
         """Test successful end-to-end receipt processing."""
         mock_exists.return_value = True
         mock_access.return_value = True
