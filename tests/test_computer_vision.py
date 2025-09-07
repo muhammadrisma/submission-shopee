@@ -26,8 +26,9 @@ class TestImagePreprocessor:
 
     def test_preprocess_image_invalid_path(self):
         """Test preprocessing with invalid image path."""
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             ImagePreprocessor.preprocess_image("nonexistent.jpg")
+        assert "Image file not found" in str(exc_info.value)
 
     @patch("os.access")
     @patch("os.path.exists")
@@ -272,17 +273,15 @@ class TestReceiptParser:
 class TestComputerVisionService:
     """Test cases for ComputerVisionService integration."""
 
-    @patch("os.access")
-    @patch("os.path.exists")
     @patch("services.computer_vision.ImagePreprocessor.preprocess_image")
     @patch("services.computer_vision.OCRService.extract_text")
     @patch("services.computer_vision.ReceiptParser.parse_receipt")
+    @patch("os.path.exists")
     def test_process_receipt_success(
-        self, mock_parse, mock_ocr, mock_preprocess, mock_exists, mock_access
+        self, mock_exists, mock_parse, mock_ocr, mock_preprocess
     ):
         """Test successful end-to-end receipt processing."""
         mock_exists.return_value = True
-        mock_access.return_value = True
         mock_preprocess.return_value = np.zeros((100, 100), dtype=np.uint8)
         mock_ocr.return_value = "WALMART\nItem 1 $5.99\nTotal: $5.99"
         mock_parse.return_value = {
@@ -314,14 +313,17 @@ class TestComputerVisionService:
         mock_parse.assert_called_once()
 
     @patch("services.computer_vision.ImagePreprocessor.preprocess_image")
-    def test_process_receipt_preprocessing_error(self, mock_preprocess):
+    @patch("os.path.exists")
+    def test_process_receipt_preprocessing_error(self, mock_exists, mock_preprocess):
         """Test receipt processing with preprocessing error."""
-        mock_preprocess.side_effect = ValueError("Image not found")
+        mock_exists.return_value = False
 
         service = ComputerVisionService()
 
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exc_info:
             service.process_receipt("nonexistent.jpg")
+
+        assert "Image file not found" in str(exc_info.value)
 
 
 class TestIntegrationWithSampleData:

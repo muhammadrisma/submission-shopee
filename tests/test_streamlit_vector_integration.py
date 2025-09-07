@@ -44,12 +44,12 @@ def test_streamlit_integration():
         try:
             if result.get("success", False) and "parsed_query" in result:
                 print(f"🎯 Intent detected: {result['parsed_query']['intent']}")
-                print(f"📊 Results found: {len(result['results'])}")
+                print(f"📊 Results found: {len(result.get('results', []))}")
                 print(f"🤖 Response: {result['formatted_response'][:100]}...")
 
                 if result["parsed_query"]["intent"] == "semantic_search":
                     print("   ✅ Using VECTOR SEARCH")
-                    if result["results"]:
+                    if result.get("results"):
                         top_result = result["results"][0]
                         if "similarity_score" in top_result:
                             print(

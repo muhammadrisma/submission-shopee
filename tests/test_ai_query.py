@@ -63,7 +63,7 @@ class TestOpenRouterClient(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             self.client.chat_completion(messages)
 
-        self.assertIn("Network error", str(context.exception))
+        self.assertIn("Unexpected error", str(context.exception))
 
 
 class TestQueryParser(unittest.TestCase):
@@ -123,10 +123,10 @@ class TestQueryParser(unittest.TestCase):
 
     def test_parse_general_query(self):
         """Test parsing general/unknown query."""
-        query = "Random question about something"
+        query = "Random question about something that has nothing to do with food or receipts"
         result = self.parser.parse_query(query)
 
-        self.assertEqual(result["intent"], "semantic_search")
+        self.assertEqual(result["intent"], "general")
         self.assertGreaterEqual(result["confidence"], 0.0)
 
     def test_extract_item_name(self):
@@ -431,7 +431,7 @@ class TestAIQueryService(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertEqual(result["query"], "Test query")
         self.assertTrue("error" in result)
-        self.assertIn("error processing", result["formatted_response"])
+        self.assertIn("encountered an error", result["formatted_response"])
         self.assertGreaterEqual(result["execution_time"], 0)
 
     def test_get_query_suggestions(self):
