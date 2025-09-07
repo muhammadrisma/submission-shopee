@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import pandas as pd
 
 def process_small_csv():
     print("Processing small CSV (customers-100000.csv)...")

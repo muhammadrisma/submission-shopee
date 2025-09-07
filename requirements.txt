@@ -1,8 +1,9 @@
 pandas
 typing
+pytest
 streamlit>=1.28.0
 opencv-python>=4.8.0
-pytesseract>=0.3.10
+pytesseract
 requests>=2.31.0
 python-dotenv>=1.0.0
 Pillow>=10.0.0
