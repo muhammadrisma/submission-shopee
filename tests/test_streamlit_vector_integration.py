@@ -41,18 +41,26 @@ def test_streamlit_integration():
 
         result = ai_service.process_query(query)
 
-        print(f"🎯 Intent detected: {result['parsed_query']['intent']}")
-        print(f"📊 Results found: {len(result['results'])}")
-        print(f"🤖 Response: {result['formatted_response'][:100]}...")
+        try:
+            if result.get("success", False) and "parsed_query" in result:
+                print(f"🎯 Intent detected: {result['parsed_query']['intent']}")
+                print(f"📊 Results found: {len(result['results'])}")
+                print(f"🤖 Response: {result['formatted_response'][:100]}...")
 
-        if result["parsed_query"]["intent"] == "semantic_search":
-            print("   ✅ Using VECTOR SEARCH")
-            if result["results"]:
-                top_result = result["results"][0]
-                if "similarity_score" in top_result:
-                    print(f"   🎯 Top similarity: {top_result['similarity_score']:.1%}")
-        else:
-            print("   📋 Using traditional SQL search")
+                if result["parsed_query"]["intent"] == "semantic_search":
+                    print("   ✅ Using VECTOR SEARCH")
+                    if result["results"]:
+                        top_result = result["results"][0]
+                        if "similarity_score" in top_result:
+                            print(f"   🎯 Top similarity: {top_result['similarity_score']:.1%}")
+                else:
+                    print("   📋 Using traditional SQL search")
+            else:
+                print("   ❌ Query processing failed or no parsed query")
+        except (TypeError, KeyError, AttributeError) as e:
+            print(f"   ❌ Query processing failed: {e}")
+        except Exception as e:
+            print(f"   ❌ Unexpected error: {e}")
 
 
 if __name__ == "__main__":

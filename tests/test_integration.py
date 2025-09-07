@@ -44,11 +44,11 @@ def test_imports():
 
         print("✅ Main app imported")
 
-        return True
+        assert True
 
     except ImportError as e:
         print(f"❌ Import error: {e}")
-        return False
+        assert False, f"Import error: {e}"
 
 
 def test_database():
@@ -66,11 +66,11 @@ def test_database():
         stats = db_service.get_database_stats()
         print(f"✅ Database stats: {stats['receipt_count']} receipts")
 
-        return True
+        assert True
 
     except Exception as e:
         print(f"❌ Database error: {e}")
-        return False
+        assert False, f"Database error: {e}"
 
 
 def test_config():
@@ -89,11 +89,11 @@ def test_config():
         else:
             print("⚠️ OpenRouter API key not configured")
 
-        return True
+        assert True
 
     except Exception as e:
         print(f"❌ Config error: {e}")
-        return False
+        assert False, f"Config error: {e}"
 
 
 def test_services():
@@ -114,11 +114,11 @@ def test_services():
         else:
             print("⚠️ AI query service not available (no API key)")
 
-        return True
+        assert True
 
     except Exception as e:
         print(f"❌ Service error: {e}")
-        return False
+        assert False, f"Service error: {e}"
 
 
 def test_ui_components():
@@ -134,11 +134,11 @@ def test_ui_components():
 
         print("✅ Query interface initialized")
 
-        return True
+        assert True
 
     except Exception as e:
         print(f"❌ UI component error: {e}")
-        return False
+        assert False, f"UI component error: {e}"
 
 
 def main():

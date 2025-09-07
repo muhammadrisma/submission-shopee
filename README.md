@@ -82,12 +82,6 @@ food-receipt-analyzer/
 │   └── receipts.db              # SQLite database
 │
 ├── 📁 uploads/                  # Temporary file uploads
-│
-└── 📁 .kiro/                    # Kiro IDE specifications
-    └── specs/food-receipt-analyzer/
-        ├── requirements.md
-        ├── design.md
-        └── tasks.md
 ```
 
 ## 🚀 Quick Start
@@ -309,7 +303,7 @@ Use the debug scripts in the `debug/` folder to troubleshoot specific components
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
+(:v Ris)
 ## 🙏 Acknowledgments
 
 - **Tesseract OCR**: Google's open-source OCR engine
