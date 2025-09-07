@@ -13,15 +13,16 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from services.computer_vision import ComputerVisionService, ReceiptParser
-from datetime import date
 import json
+from datetime import date
+
+from services.computer_vision import ComputerVisionService, ReceiptParser
 
 
 def demo_receipt_parser():
     """Demonstrate receipt parsing with sample OCR text."""
     print("=== Computer Vision Service Demo ===\n")
-    
+
     # Sample OCR text that might come from a real receipt
     sample_ocr_text = """WAL*MART SUPERCENTER
 Store #2345 Manager JOHN DOE
@@ -47,11 +48,11 @@ CHANGE                   3.75
     print(sample_ocr_text)
     print("-" * 50)
     print()
-    
+
     # Parse the receipt
     parser = ReceiptParser()
     result = parser.parse_receipt(sample_ocr_text)
-    
+
     print("Parsed Receipt Data:")
     print("-" * 50)
     print(f"Store Name: {result['store_name']}")
@@ -59,30 +60,32 @@ CHANGE                   3.75
     print(f"Total Amount: ${result['total_amount']:.2f}")
     print(f"Number of Items: {len(result['items'])}")
     print()
-    
+
     print("Items:")
-    for i, item in enumerate(result['items'], 1):
+    for i, item in enumerate(result["items"], 1):
         print(f"  {i}. {item['item_name']}")
         print(f"     Quantity: {item['quantity']}")
         print(f"     Unit Price: ${item['unit_price']:.2f}")
         print(f"     Total Price: ${item['total_price']:.2f}")
         print()
-    
+
     print("Raw JSON Output:")
     print("-" * 50)
     # Convert date to string for JSON serialization
     result_copy = result.copy()
-    result_copy['receipt_date'] = result_copy['receipt_date'].isoformat()
-    if 'processing_timestamp' in result_copy:
-        result_copy['processing_timestamp'] = result_copy['processing_timestamp'].isoformat()
-    
+    result_copy["receipt_date"] = result_copy["receipt_date"].isoformat()
+    if "processing_timestamp" in result_copy:
+        result_copy["processing_timestamp"] = result_copy[
+            "processing_timestamp"
+        ].isoformat()
+
     print(json.dumps(result_copy, indent=2))
 
 
 def demo_different_receipt_formats():
     """Demonstrate parsing different receipt formats."""
     print("\n\n=== Testing Different Receipt Formats ===\n")
-    
+
     test_receipts = [
         {
             "name": "Target Receipt",
@@ -99,7 +102,7 @@ Subtotal            22.47
 Tax                  1.80
 Total              $24.27
 
-01/15/2024 16:45"""
+01/15/2024 16:45""",
         },
         {
             "name": "Grocery Store Receipt",
@@ -113,33 +116,33 @@ Sourdough Bread      2.99
 3 Bananas            2.47
 
 Total: $11.73
-Date: 02/20/2024"""
-        }
+Date: 02/20/2024""",
+        },
     ]
-    
+
     parser = ReceiptParser()
-    
+
     for receipt in test_receipts:
         print(f"Testing: {receipt['name']}")
         print("-" * 30)
-        
-        result = parser.parse_receipt(receipt['text'])
-        
+
+        result = parser.parse_receipt(receipt["text"])
+
         print(f"Store: {result['store_name']}")
         print(f"Date: {result['receipt_date']}")
         print(f"Total: ${result['total_amount']:.2f}")
         print(f"Items found: {len(result['items'])}")
-        
-        for item in result['items']:
+
+        for item in result["items"]:
             print(f"  - {item['item_name']}: ${item['total_price']:.2f}")
-        
+
         print()
 
 
 if __name__ == "__main__":
     demo_receipt_parser()
     demo_different_receipt_formats()
-    
+
     print("\n=== Demo Complete ===")
     print("The computer vision service is ready for integration!")
     print("Next steps:")

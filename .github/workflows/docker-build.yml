@@ -81,7 +81,7 @@ jobs:
       uses: aquasecurity/trivy-action@master
       if: github.event_name != 'pull_request'
       with:
-        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         format: 'sarif'
         output: 'trivy-results.sarif'
         
@@ -95,7 +95,7 @@ jobs:
       uses: anchore/sbom-action@v0
       if: github.event_name != 'pull_request'
       with:
-        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         format: spdx-json
         output-file: sbom.spdx.json
         
@@ -129,14 +129,14 @@ jobs:
     - name: Test container startup
       run: |
         # Pull the built image
-        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         
         # Run container in background
         docker run -d --name test-container \
           --platform ${{ matrix.platform }} \
           -p 8501:8501 \
           -e OPENROUTER_API_KEY=test-key \
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         
         # Wait for container to be ready
         echo "Waiting for container to start..."
@@ -179,7 +179,7 @@ jobs:
     - name: Run Grype vulnerability scanner
       uses: anchore/scan-action@v3
       with:
-        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         fail-build: false
         severity-cutoff: high
         
@@ -211,7 +211,7 @@ jobs:
         
         # Tag with semantic versions
         docker buildx imagetools create \
-          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
           --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$VERSION \
           --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MINOR \
           --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:$MAJOR \

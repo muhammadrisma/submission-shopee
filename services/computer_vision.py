@@ -5,20 +5,26 @@ This module provides image preprocessing, OCR text extraction, and receipt parsi
 functionality for the Food Receipt Analyzer application.
 """
 
+import logging
+import os
+import re
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Dict, List, Optional, Tuple
+
 import cv2
 import numpy as np
 import pytesseract
 from PIL import Image
-from typing import Dict, List, Optional, Tuple
-import re
-from datetime import datetime, date
-from decimal import Decimal
-import logging
-import os
 
 from utils.error_handling import (
-    error_handler, with_error_handling, with_retry,
-    OCRError, FileSystemError, ErrorCategory, ErrorSeverity
+    ErrorCategory,
+    ErrorSeverity,
+    FileSystemError,
+    OCRError,
+    error_handler,
+    with_error_handling,
+    with_retry,
 )
 from utils.validation import file_validator, receipt_validator
 
@@ -29,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class ImagePreprocessor:
     """Handles image preprocessing for better OCR accuracy."""
-    
+
     @staticmethod
     @with_error_handling(
         category=ErrorCategory.OCR,
@@ -37,16 +43,16 @@ class ImagePreprocessor:
         recovery_suggestions=[
             "Check if the image file exists and is readable",
             "Verify the image format is supported",
-            "Try with a different image"
-        ]
+            "Try with a different image",
+        ],
     )
     def preprocess_image(image_path: str) -> np.ndarray:
         """
         Preprocess receipt image for better OCR accuracy.
-        
+
         Args:
             image_path: Path to the receipt image
-            
+
         Returns:
             Preprocessed image as numpy array
         """
@@ -58,10 +64,10 @@ class ImagePreprocessor:
                 user_message="Image file not found",
                 recovery_suggestions=[
                     "Check if the file was uploaded correctly",
-                    "Try uploading the image again"
-                ]
+                    "Try uploading the image again",
+                ],
             )
-        
+
         # Validate file is readable
         if not os.access(image_path, os.R_OK):
             raise FileSystemError(
@@ -70,10 +76,10 @@ class ImagePreprocessor:
                 user_message="Cannot access image file",
                 recovery_suggestions=[
                     "Check file permissions",
-                    "Try uploading the image again"
-                ]
+                    "Try uploading the image again",
+                ],
             )
-        
+
         try:
             # Read image
             image = cv2.imread(image_path)
@@ -84,10 +90,10 @@ class ImagePreprocessor:
                     recovery_suggestions=[
                         "Check if the image file is corrupted",
                         "Try with a different image format",
-                        "Re-upload the image"
-                    ]
+                        "Re-upload the image",
+                    ],
                 )
-            
+
             # Validate image dimensions
             height, width = image.shape[:2]
             if height < 50 or width < 50:
@@ -96,25 +102,25 @@ class ImagePreprocessor:
                     user_message="Image is too small for processing",
                     recovery_suggestions=[
                         "Use a higher resolution image",
-                        "Ensure image is at least 50x50 pixels"
-                    ]
+                        "Ensure image is at least 50x50 pixels",
+                    ],
                 )
-            
+
             # Convert to grayscale
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
+
             # Apply noise reduction
             denoised = ImagePreprocessor._reduce_noise(gray)
-            
+
             # Enhance contrast
             enhanced = ImagePreprocessor._enhance_contrast(denoised)
-            
+
             # Apply morphological operations to clean up text
             cleaned = ImagePreprocessor._morphological_cleanup(enhanced)
-            
+
             logger.info(f"Successfully preprocessed image: {image_path}")
             return cleaned
-            
+
         except OCRError:
             raise
         except FileSystemError:
@@ -126,56 +132,56 @@ class ImagePreprocessor:
                 recovery_suggestions=[
                     "Try with a different image",
                     "Check if the image is corrupted",
-                    "Ensure the image is a valid format"
-                ]
+                    "Ensure the image is a valid format",
+                ],
             )
-    
+
     @staticmethod
     def _reduce_noise(image: np.ndarray) -> np.ndarray:
         """Apply noise reduction techniques."""
         # Apply Gaussian blur to reduce noise
         blurred = cv2.GaussianBlur(image, (3, 3), 0)
-        
+
         # Apply bilateral filter for edge-preserving smoothing
         filtered = cv2.bilateralFilter(blurred, 9, 75, 75)
-        
+
         return filtered
-    
+
     @staticmethod
     def _enhance_contrast(image: np.ndarray) -> np.ndarray:
         """Enhance image contrast for better text recognition."""
         # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         enhanced = clahe.apply(image)
-        
+
         # Apply threshold to create binary image
         _, binary = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
+
         return binary
-    
+
     @staticmethod
     def _morphological_cleanup(image: np.ndarray) -> np.ndarray:
         """Apply morphological operations to clean up text."""
         # Create kernel for morphological operations
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
-        
+
         # Apply opening to remove small noise
         opened = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-        
+
         # Apply closing to fill small gaps
         closed = cv2.morphologyEx(opened, cv2.MORPH_CLOSE, kernel)
-        
+
         return closed
 
 
 class OCRService:
     """Handles OCR text extraction from preprocessed images."""
-    
+
     def __init__(self):
         """Initialize OCR service with optimal configuration."""
         # Configure Tesseract for receipt processing
-        self.config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,/$-: '
-    
+        self.config = "--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,/$-: "
+
     @with_retry(max_retries=2, retry_on=(pytesseract.TesseractError,))
     @with_error_handling(
         category=ErrorCategory.OCR,
@@ -183,16 +189,16 @@ class OCRService:
         recovery_suggestions=[
             "Check if Tesseract OCR is installed",
             "Try with a clearer image",
-            "Verify image preprocessing was successful"
-        ]
+            "Verify image preprocessing was successful",
+        ],
     )
     def extract_text(self, image: np.ndarray) -> str:
         """
         Extract text from preprocessed image using OCR.
-        
+
         Args:
             image: Preprocessed image as numpy array
-            
+
         Returns:
             Extracted text as string
         """
@@ -203,10 +209,10 @@ class OCRService:
                 user_message="Invalid image for text extraction",
                 recovery_suggestions=[
                     "Check image preprocessing",
-                    "Try with a different image"
-                ]
+                    "Try with a different image",
+                ],
             )
-        
+
         try:
             # Check if Tesseract is available
             try:
@@ -218,16 +224,16 @@ class OCRService:
                     recovery_suggestions=[
                         "Install Tesseract OCR on your system",
                         "Add Tesseract to your system PATH",
-                        "Set TESSERACT_CMD in your .env file"
-                    ]
+                        "Set TESSERACT_CMD in your .env file",
+                    ],
                 )
-            
+
             # Convert numpy array to PIL Image for pytesseract
             pil_image = Image.fromarray(image)
-            
+
             # Extract text using Tesseract
             text = pytesseract.image_to_string(pil_image, config=self.config)
-            
+
             # Validate extracted text
             if not text or not text.strip():
                 raise OCRError(
@@ -236,16 +242,18 @@ class OCRService:
                     recovery_suggestions=[
                         "Try with a clearer image",
                         "Ensure the image contains readable text",
-                        "Check image quality and resolution"
-                    ]
+                        "Check image quality and resolution",
+                    ],
                 )
-            
+
             # Clean up extracted text
             cleaned_text = self._clean_text(text)
-            
-            logger.info(f"Successfully extracted text, length: {len(cleaned_text)} characters")
+
+            logger.info(
+                f"Successfully extracted text, length: {len(cleaned_text)} characters"
+            )
             return cleaned_text
-            
+
         except OCRError:
             raise
         except pytesseract.TesseractError as e:
@@ -255,8 +263,8 @@ class OCRService:
                 recovery_suggestions=[
                     "Check if Tesseract is properly installed",
                     "Try with a different image",
-                    "Verify image quality"
-                ]
+                    "Verify image quality",
+                ],
             )
         except Exception as e:
             raise OCRError(
@@ -265,84 +273,84 @@ class OCRService:
                 recovery_suggestions=[
                     "Try with a different image",
                     "Check OCR configuration",
-                    "Verify image format"
-                ]
+                    "Verify image format",
+                ],
             )
-    
+
     def _clean_text(self, text: str) -> str:
         """Clean up extracted text by removing excessive whitespace and noise."""
         # Remove excessive whitespace
-        cleaned = re.sub(r'\s+', ' ', text.strip())
-        
+        cleaned = re.sub(r"\s+", " ", text.strip())
+
         # Remove common OCR artifacts
-        cleaned = re.sub(r'[|\\]', '', cleaned)
-        
+        cleaned = re.sub(r"[|\\]", "", cleaned)
+
         return cleaned
 
 
 class ReceiptParser:
     """Parses structured data from OCR-extracted text."""
-    
+
     def __init__(self):
         """Initialize parser with regex patterns for receipt data extraction."""
         # Store name patterns (common receipt headers)
         self.store_patterns = [
-            r'(?i)(walmart|target|kroger|safeway|whole foods|costco|trader joe|publix)',
-            r'(?i)([A-Z][a-z]+\s+[A-Z][a-z]+)\s*(?:store|market|grocery)',
-            r'([A-Za-z][A-Za-z\s]+?)\s*[–—-]\s*([A-Za-z][A-Za-z\s]+)',  # "Burrito Bar – Authentic Mexican Joint"
-            r'^([A-Z\s]+)(?:\n|\r)',  # First line in caps
+            r"(?i)(walmart|target|kroger|safeway|whole foods|costco|trader joe|publix)",
+            r"(?i)([A-Z][a-z]+\s+[A-Z][a-z]+)\s*(?:store|market|grocery)",
+            r"([A-Za-z][A-Za-z\s]+?)\s*[–—-]\s*([A-Za-z][A-Za-z\s]+)",  # "Burrito Bar – Authentic Mexican Joint"
+            r"^([A-Z\s]+)(?:\n|\r)",  # First line in caps
         ]
-        
+
         # Date patterns
         self.date_patterns = [
-            r'(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
-            r'(\d{4}[/-]\d{1,2}[/-]\d{1,2})',
-            r'(?i)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2},?\s+\d{4}',
+            r"(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+            r"(\d{4}[/-]\d{1,2}[/-]\d{1,2})",
+            r"(?i)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{1,2},?\s+\d{4}",
         ]
-        
+
         # Item and price patterns (ordered by specificity)
         self.item_patterns = [
             # Handle specific concatenated formats we commonly see
-            r'\b(CHICKENBURRITO|KIDSMEAL-MAKEOWN|LARGEDRINK|DOMESTICBEER|CHEESEBURGER|FRENCHFRIES)\s+\$(\d+\.\d{2})\b',
+            r"\b(CHICKENBURRITO|KIDSMEAL-MAKEOWN|LARGEDRINK|DOMESTICBEER|CHEESEBURGER|FRENCHFRIES)\s+\$(\d+\.\d{2})\b",
             # Handle hyphenated format: "KIDSMEAL-MAKEOWN $4.99" (most specific)
-            r'\b([A-Z][A-Z]*-[A-Z][A-Z]*)\s+\$(\d+\.\d{2})\b',
+            r"\b([A-Z][A-Z]*-[A-Z][A-Z]*)\s+\$(\d+\.\d{2})\b",
             # Handle concatenated format: "CHICKENBURRITO $8.79"
-            r'\b([A-Z]{6,})\s+\$(\d+\.\d{2})\b',  # At least 6 chars to avoid false matches
+            r"\b([A-Z]{6,})\s+\$(\d+\.\d{2})\b",  # At least 6 chars to avoid false matches
             # Handle em dash format: "Chicken Burrito — $8.79"
-            r'([A-Za-z][A-Za-z\s\(\)]+?)\s*[—–-]\s*\$(\d+\.\d{2})',
+            r"([A-Za-z][A-Za-z\s\(\)]+?)\s*[—–-]\s*\$(\d+\.\d{2})",
             # Handle standard format: "Chicken Burrito $8.79"
-            r'([A-Za-z][A-Za-z\s\(\)]{3,}?)\s+\$(\d+\.\d{2})',
+            r"([A-Za-z][A-Za-z\s\(\)]{3,}?)\s+\$(\d+\.\d{2})",
             # Handle quantity format: "2 Chicken Burrito $8.79"
-            r'(\d+)\s+([A-Za-z][A-Za-z\s\(\)]+?)\s+\$(\d+\.\d{2})',
+            r"(\d+)\s+([A-Za-z][A-Za-z\s\(\)]+?)\s+\$(\d+\.\d{2})",
         ]
-        
+
         # Total patterns (prioritize "Total" over "Subtotal")
         self.total_patterns = [
-            r'(?i)balancedue\s+\$?(\d+\.\d{2})',  # BALANCEDUE $22.11 (concatenated)
-            r'(?i)total\s*\([^)]*balance\s+due[^)]*\)[:\s]*\$?(\d+\.\d{2})',  # Total (Balance Due): $22.11
-            r'(?i)balance\s+due[:\s]*\$?(\d+\.\d{2})',  # Balance Due format
-            r'(?i)(?<!sub)total[:\s]*\$?(\d+\.\d{2})',  # Total but not Subtotal
-            r'(?i)amount[:\s]*\$?(\d+\.\d{2})',
-            r'(?i)balance[:\s]*\$?(\d+\.\d{2})',
-            r'(?i)total[:\s]*\$?(\d+\.\d{2})',  # Fallback to any total
+            r"(?i)balancedue\s+\$?(\d+\.\d{2})",  # BALANCEDUE $22.11 (concatenated)
+            r"(?i)total\s*\([^)]*balance\s+due[^)]*\)[:\s]*\$?(\d+\.\d{2})",  # Total (Balance Due): $22.11
+            r"(?i)balance\s+due[:\s]*\$?(\d+\.\d{2})",  # Balance Due format
+            r"(?i)(?<!sub)total[:\s]*\$?(\d+\.\d{2})",  # Total but not Subtotal
+            r"(?i)amount[:\s]*\$?(\d+\.\d{2})",
+            r"(?i)balance[:\s]*\$?(\d+\.\d{2})",
+            r"(?i)total[:\s]*\$?(\d+\.\d{2})",  # Fallback to any total
         ]
-    
+
     @with_error_handling(
         category=ErrorCategory.OCR,
         severity=ErrorSeverity.MEDIUM,
         recovery_suggestions=[
             "Try with a clearer receipt image",
             "Check if the receipt text is readable",
-            "Manually verify extracted data"
-        ]
+            "Manually verify extracted data",
+        ],
     )
     def parse_receipt(self, text: str) -> Dict:
         """
         Parse receipt text to extract structured data.
-        
+
         Args:
             text: OCR-extracted text from receipt
-            
+
         Returns:
             Dictionary containing parsed receipt data
         """
@@ -353,27 +361,27 @@ class ReceiptParser:
                 user_message="No text to parse",
                 recovery_suggestions=[
                     "Check OCR text extraction",
-                    "Try with a clearer image"
-                ]
+                    "Try with a clearer image",
+                ],
             )
-        
+
         try:
             parsed_data = {
-                'store_name': self._extract_store_name(text),
-                'receipt_date': self._extract_date(text),
-                'items': self._extract_items(text),
-                'total_amount': self._extract_total(text),
-                'raw_text': text
+                "store_name": self._extract_store_name(text),
+                "receipt_date": self._extract_date(text),
+                "items": self._extract_items(text),
+                "total_amount": self._extract_total(text),
+                "raw_text": text,
             }
-            
+
             # Validate parsed data
-            if not parsed_data['items']:
+            if not parsed_data["items"]:
                 logger.warning("No items extracted from receipt")
                 # Don't raise error, as this might be normal for some receipts
-            
-            if parsed_data['total_amount'] == 0.0 and parsed_data['items']:
+
+            if parsed_data["total_amount"] == 0.0 and parsed_data["items"]:
                 logger.warning("Total amount is zero but items were found")
-            
+
             # Validate using receipt validator
             try:
                 validated_data = receipt_validator.validate_receipt_data(parsed_data)
@@ -382,12 +390,14 @@ class ReceiptParser:
             except Exception as validation_error:
                 logger.warning(f"Receipt validation warning: {validation_error}")
                 # Continue with unvalidated data but log the warning
-            
-            logger.info(f"Successfully parsed receipt: {parsed_data['store_name']}, "
-                       f"{len(parsed_data['items'])} items")
-            
+
+            logger.info(
+                f"Successfully parsed receipt: {parsed_data['store_name']}, "
+                f"{len(parsed_data['items'])} items"
+            )
+
             return parsed_data
-            
+
         except OCRError:
             raise
         except Exception as e:
@@ -397,21 +407,21 @@ class ReceiptParser:
                 recovery_suggestions=[
                     "Try with a clearer receipt image",
                     "Check if the receipt format is supported",
-                    "Manually verify the receipt content"
-                ]
+                    "Manually verify the receipt content",
+                ],
             )
-    
+
     def _extract_store_name(self, text: str) -> Optional[str]:
         """Extract store name from receipt text."""
         # Look for specific patterns in the OCR text
         # From the actual text: "AUTHENTICMEXICANJOINT"
-        
+
         # Check for known store patterns in the concatenated text
-        if 'AUTHENTICMEXICANJOINT' in text:
+        if "AUTHENTICMEXICANJOINT" in text:
             return "Burrito Bar - Authentic Mexican Joint"
-        
-        lines = text.split('\n')
-        
+
+        lines = text.split("\n")
+
         # Try each store pattern
         for pattern in self.store_patterns:
             for line in lines[:5]:  # Check first 5 lines
@@ -419,27 +429,27 @@ class ReceiptParser:
                 if match:
                     store_name = match.group(1).strip()
                     return store_name.title()
-        
+
         # Look for restaurant-like words in the text
-        restaurant_indicators = ['JOINT', 'BAR', 'GRILL', 'RESTAURANT', 'CAFE', 'DINER']
+        restaurant_indicators = ["JOINT", "BAR", "GRILL", "RESTAURANT", "CAFE", "DINER"]
         for indicator in restaurant_indicators:
             if indicator in text:
                 # Try to extract the name around this indicator
-                pattern = rf'([A-Z]+{indicator}|{indicator}[A-Z]+)'
+                pattern = rf"([A-Z]+{indicator}|{indicator}[A-Z]+)"
                 match = re.search(pattern, text)
                 if match:
                     name = match.group(1)
                     # Clean up the name
-                    if name == 'AUTHENTICMEXICANJOINT':
+                    if name == "AUTHENTICMEXICANJOINT":
                         return "Burrito Bar - Authentic Mexican Joint"
-        
+
         # Fallback: use first non-empty line if no pattern matches
         for line in lines[:3]:
             if line.strip() and len(line.strip()) > 3:
                 return line.strip().title()
-        
+
         return "Unknown Store"
-    
+
     def _extract_date(self, text: str) -> Optional[date]:
         """Extract receipt date from text."""
         for pattern in self.date_patterns:
@@ -448,8 +458,14 @@ class ReceiptParser:
                 date_str = match.group(1)
                 try:
                     # Try different date formats
-                    for fmt in ['%m/%d/%Y', '%m-%d-%Y', '%Y/%m/%d', '%Y-%m-%d', 
-                               '%m/%d/%y', '%m-%d-%y']:
+                    for fmt in [
+                        "%m/%d/%Y",
+                        "%m-%d-%Y",
+                        "%Y/%m/%d",
+                        "%Y-%m-%d",
+                        "%m/%d/%y",
+                        "%m-%d-%y",
+                    ]:
                         try:
                             parsed_date = datetime.strptime(date_str, fmt).date()
                             return parsed_date
@@ -457,50 +473,77 @@ class ReceiptParser:
                             continue
                 except Exception:
                     continue
-        
+
         # Fallback to today's date if no date found
         return date.today()
-    
+
     def _extract_items(self, text: str) -> List[Dict]:
         """Extract items and prices from receipt text."""
         items = []
-        
+
         # Words to exclude from items (receipt metadata)
         exclude_words = {
-            'subtotal', 'tax', 'total', 'cash', 'change', 'balance', 
-            'amount', 'tender', 'credit', 'debit', 'visa', 'mastercard',
-            'store', 'manager', 'cashier', 'receipt', 'thank', 'you',
-            'phone', 'address', 'street', 'city', 'state', 'zip',
-            'authorize', 'host', 'order', 'like', 'facebook', 'email'
+            "subtotal",
+            "tax",
+            "total",
+            "cash",
+            "change",
+            "balance",
+            "amount",
+            "tender",
+            "credit",
+            "debit",
+            "visa",
+            "mastercard",
+            "store",
+            "manager",
+            "cashier",
+            "receipt",
+            "thank",
+            "you",
+            "phone",
+            "address",
+            "street",
+            "city",
+            "state",
+            "zip",
+            "authorize",
+            "host",
+            "order",
+            "like",
+            "facebook",
+            "email",
         }
-        
+
         # Use a more targeted approach for single-line OCR text
         # Look for the specific items we expect to find
         expected_items = [
-            ('CHICKENBURRITO', 'Chicken Burrito'),
-            ('KIDSMEAL-MAKEOWN', 'Kids Meal - Make Own'),
-            ('LARGEDRINK', 'Large Drink'),
-            ('DOMESTICBEER', 'Domestic Beer')
+            ("CHICKENBURRITO", "Chicken Burrito"),
+            ("KIDSMEAL-MAKEOWN", "Kids Meal - Make Own"),
+            ("LARGEDRINK", "Large Drink"),
+            ("DOMESTICBEER", "Domestic Beer"),
         ]
-        
+
         found_items = set()  # Track found items to avoid duplicates
-        
+
         # First, try to find the expected items directly
         for raw_name, clean_name in expected_items:
-            pattern = rf'\b{re.escape(raw_name)}\s+\$(\d+\.\d{{2}})\b'
+            pattern = rf"\b{re.escape(raw_name)}\s+\$(\d+\.\d{{2}})\b"
             match = re.search(pattern, text)
             if match:
                 price = float(match.group(1))
                 item_key = (clean_name.lower(), price)
                 if item_key not in found_items:
                     found_items.add(item_key)
-                    items.append({
-                        'item_name': clean_name,
-                        'quantity': 1,
-                        'unit_price': price,
-                        'total_price': price
-                    })
-        
+                    items.append(
+                        {
+                            "item_name": clean_name,
+                            "quantity": 1,
+                            "unit_price": price,
+                            "total_price": price,
+                        }
+                    )
+
         # If we didn't find enough items, fall back to pattern matching
         if len(items) < 3:  # If we found fewer than 3 items, try pattern matching
             for pattern in self.item_patterns:
@@ -525,62 +568,67 @@ class ReceiptParser:
                             quantity = 1
                     else:
                         continue
-                    
+
                     # Clean up item name
                     item_name = self._clean_item_name(item_name)
-                    
+
                     # Additional filtering for item names
                     item_name_clean = item_name.lower()
-                    if any(exclude_word in item_name_clean for exclude_word in exclude_words):
+                    if any(
+                        exclude_word in item_name_clean
+                        for exclude_word in exclude_words
+                    ):
                         continue
-                    
+
                     # Skip very short item names (likely parsing errors)
                     if len(item_name.strip()) < 3:
                         continue
-                    
+
                     try:
                         price = Decimal(price_str)
                         unit_price = price / quantity if quantity > 0 else price
-                        
+
                         # Create a unique key to avoid duplicates
                         item_key = (item_name.lower(), float(price))
                         if item_key in found_items:
                             continue
                         found_items.add(item_key)
-                        
+
                         item = {
-                            'item_name': item_name,
-                            'quantity': quantity,
-                            'unit_price': float(unit_price),
-                            'total_price': float(price)
+                            "item_name": item_name,
+                            "quantity": quantity,
+                            "unit_price": float(unit_price),
+                            "total_price": float(price),
                         }
                         items.append(item)
                     except (ValueError, TypeError):
                         continue
-        
+
         # Also try line-by-line approach as fallback
-        lines = text.split('\n')
-        
+        lines = text.split("\n")
+
         for line in lines:
             line = line.strip()
             if not line or len(line) < 5:
                 continue
-            
+
             # Skip lines that look like receipt metadata
             line_lower = line.lower()
             if any(exclude_word in line_lower for exclude_word in exclude_words):
                 continue
-            
+
             # Skip lines with store numbers, dates, or transaction IDs
-            if re.search(r'(st#|op#|te#|tr#|\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})', line_lower):
+            if re.search(
+                r"(st#|op#|te#|tr#|\d{2}/\d{2}/\d{4}|\d{4}-\d{2}-\d{2})", line_lower
+            ):
                 continue
-            
+
             # Try to match item patterns
             for pattern in self.item_patterns:
                 match = re.search(pattern, line)
                 if match:
                     groups = match.groups()
-                    
+
                     if len(groups) == 2:
                         # Item name and price (no quantity)
                         item_name, price_str = groups
@@ -600,62 +648,65 @@ class ReceiptParser:
                             quantity = 1
                     else:
                         continue
-                    
+
                     # Additional filtering for item names
                     item_name_clean = item_name.strip().lower()
-                    if any(exclude_word in item_name_clean for exclude_word in exclude_words):
+                    if any(
+                        exclude_word in item_name_clean
+                        for exclude_word in exclude_words
+                    ):
                         continue
-                    
+
                     # Skip very short item names (likely parsing errors)
                     if len(item_name.strip()) < 3:
                         continue
-                    
+
                     try:
                         price = Decimal(price_str)
                         unit_price = price / quantity if quantity > 0 else price
-                        
+
                         item = {
-                            'item_name': item_name.strip().title(),
-                            'quantity': quantity,
-                            'unit_price': float(unit_price),
-                            'total_price': float(price)
+                            "item_name": item_name.strip().title(),
+                            "quantity": quantity,
+                            "unit_price": float(unit_price),
+                            "total_price": float(price),
                         }
                         items.append(item)
                         break
                     except (ValueError, TypeError):
                         continue
-        
+
         return items
-    
+
     def _clean_item_name(self, item_name: str) -> str:
         """Clean up item names from OCR text."""
         # Handle specific known formats first
         name_mappings = {
-            'CHICKENBURRITO': 'Chicken Burrito',
-            'KIDSMEAL-MAKEOWN': 'Kids Meal - Make Own',
-            'LARGEDRINK': 'Large Drink',
-            'DOMESTICBEER': 'Domestic Beer',
-            'CHEESEBURGER': 'Cheese Burger',
-            'FRENCHFRIES': 'French Fries'
+            "CHICKENBURRITO": "Chicken Burrito",
+            "KIDSMEAL-MAKEOWN": "Kids Meal - Make Own",
+            "LARGEDRINK": "Large Drink",
+            "DOMESTICBEER": "Domestic Beer",
+            "CHEESEBURGER": "Cheese Burger",
+            "FRENCHFRIES": "French Fries",
         }
-        
+
         if item_name.upper() in name_mappings:
             return name_mappings[item_name.upper()]
-        
+
         # Convert from all caps and add spaces
         if item_name.isupper():
             # Handle hyphenated words: "KIDSMEAL-MAKEOWN" -> "Kids Meal - Make Own"
-            item_name = re.sub(r'-', ' - ', item_name)
+            item_name = re.sub(r"-", " - ", item_name)
             # Add spaces before capital letters: "CHICKENBURRITO" -> "CHICKEN BURRITO"
-            item_name = re.sub(r'([A-Z])([A-Z][a-z])', r'\1 \2', item_name)
+            item_name = re.sub(r"([A-Z])([A-Z][a-z])", r"\1 \2", item_name)
             # Convert to title case
             item_name = item_name.title()
-        
+
         # Clean up extra spaces
-        item_name = re.sub(r'\s+', ' ', item_name.strip())
-        
+        item_name = re.sub(r"\s+", " ", item_name.strip())
+
         return item_name
-    
+
     def _extract_total(self, text: str) -> Optional[float]:
         """Extract total amount from receipt text."""
         for pattern in self.total_patterns:
@@ -666,45 +717,45 @@ class ReceiptParser:
                     return total
                 except ValueError:
                     continue
-        
+
         # Fallback: sum of all item prices if no total found
         items = self._extract_items(text)
         if items:
-            return sum(item['total_price'] for item in items)
-        
+            return sum(item["total_price"] for item in items)
+
         return 0.0
 
 
 class ComputerVisionService:
     """Main service class that orchestrates image processing, OCR, and parsing."""
-    
+
     def __init__(self):
         """Initialize the computer vision service with all components."""
         self.preprocessor = ImagePreprocessor()
         self.ocr_service = OCRService()
         self.parser = ReceiptParser()
-    
+
     @with_error_handling(
         category=ErrorCategory.OCR,
         severity=ErrorSeverity.MEDIUM,
         recovery_suggestions=[
             "Check if the image file is valid",
             "Try with a different image",
-            "Ensure OCR dependencies are installed"
-        ]
+            "Ensure OCR dependencies are installed",
+        ],
     )
     def process_receipt(self, image_path: str) -> Dict:
         """
         Process a receipt image end-to-end.
-        
+
         Args:
             image_path: Path to the receipt image file
-            
+
         Returns:
             Dictionary containing all extracted receipt data
         """
         logger.info(f"Starting receipt processing for: {image_path}")
-        
+
         # Validate image file first
         if not os.path.exists(image_path):
             raise FileSystemError(
@@ -713,33 +764,33 @@ class ComputerVisionService:
                 user_message="Image file not found",
                 recovery_suggestions=[
                     "Check if the file was uploaded correctly",
-                    "Try uploading the image again"
-                ]
+                    "Try uploading the image again",
+                ],
             )
-        
+
         try:
             # Step 1: Preprocess image
             logger.info("Step 1: Preprocessing image...")
             preprocessed_image = self.preprocessor.preprocess_image(image_path)
-            
+
             # Step 2: Extract text using OCR
             logger.info("Step 2: Extracting text...")
             extracted_text = self.ocr_service.extract_text(preprocessed_image)
-            
+
             # Step 3: Parse structured data
             logger.info("Step 3: Parsing receipt data...")
             parsed_data = self.parser.parse_receipt(extracted_text)
-            
+
             # Add processing metadata
-            parsed_data['image_path'] = image_path
-            parsed_data['processing_timestamp'] = datetime.now()
-            
+            parsed_data["image_path"] = image_path
+            parsed_data["processing_timestamp"] = datetime.now()
+
             # Final validation
             self._validate_processing_result(parsed_data)
-            
+
             logger.info(f"Successfully processed receipt: {image_path}")
             return parsed_data
-            
+
         except (OCRError, FileSystemError):
             raise
         except Exception as e:
@@ -749,25 +800,28 @@ class ComputerVisionService:
                 recovery_suggestions=[
                     "Try with a different image",
                     "Check image quality and format",
-                    "Ensure all dependencies are installed"
-                ]
+                    "Ensure all dependencies are installed",
+                ],
             )
-    
+
     def _validate_processing_result(self, parsed_data: Dict):
         """Validate the final processing result."""
         issues = []
-        
+
         # Check for missing critical data
-        if not parsed_data.get('store_name') or parsed_data['store_name'] == 'Unknown Store':
+        if (
+            not parsed_data.get("store_name")
+            or parsed_data["store_name"] == "Unknown Store"
+        ):
             issues.append("Store name could not be determined")
-        
-        if not parsed_data.get('items'):
+
+        if not parsed_data.get("items"):
             issues.append("No items were extracted")
-        
-        if parsed_data.get('total_amount', 0) == 0:
+
+        if parsed_data.get("total_amount", 0) == 0:
             issues.append("Total amount is zero")
-        
+
         # Log issues as warnings (don't fail processing)
         if issues:
             logger.warning(f"Processing completed with issues: {', '.join(issues)}")
-            parsed_data['processing_warnings'] = issues
+            parsed_data["processing_warnings"] = issues
