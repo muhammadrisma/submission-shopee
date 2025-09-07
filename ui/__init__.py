@@ -1,1 +1,1 @@
-# UI package for Streamlit components and interface logic
+# UI components package

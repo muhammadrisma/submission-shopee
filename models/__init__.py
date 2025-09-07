@@ -1,1 +1,1 @@
-# Models package for data structures and database models
+# Models package

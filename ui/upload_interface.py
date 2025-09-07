@@ -14,6 +14,11 @@ from config import config
 from services.computer_vision import ComputerVisionService
 from models.receipt import Receipt, ReceiptItem
 from database.service import db_service
+from utils.error_handling import (
+    error_handler, FileSystemError, OCRError, DatabaseError,
+    ErrorCategory, ErrorSeverity
+)
+from utils.validation import file_validator
 
 
 class ReceiptUploadInterface:
@@ -45,7 +50,14 @@ class ReceiptUploadInterface:
             validation_result = self._validate_uploaded_file(uploaded_file)
             
             if not validation_result["valid"]:
-                st.error(validation_result["error"])
+                st.error(f"❌ {validation_result['error']}")
+                
+                # Show recovery suggestions if available
+                if validation_result.get('recovery_suggestions'):
+                    with st.expander("💡 How to Fix This"):
+                        for suggestion in validation_result['recovery_suggestions']:
+                            st.write(f"• {suggestion}")
+                
                 return None
             
             # Display file info
@@ -70,33 +82,24 @@ class ReceiptUploadInterface:
         Returns:
             Dictionary with validation result and error message if any
         """
-        # Check file size
-        if uploaded_file.size > self.max_file_size:
-            return {
-                "valid": False,
-                "error": f"File size ({uploaded_file.size / 1024 / 1024:.1f}MB) exceeds maximum allowed size ({config.MAX_FILE_SIZE_MB}MB)"
-            }
-        
-        # Check file extension
-        file_extension = uploaded_file.name.split('.')[-1].lower()
-        if file_extension not in self.allowed_extensions:
-            return {
-                "valid": False,
-                "error": f"File type '{file_extension}' not supported. Allowed types: {', '.join(self.allowed_extensions)}"
-            }
-        
-        # Try to open as image to validate
         try:
-            uploaded_file.seek(0)  # Reset file pointer
-            Image.open(uploaded_file)
-            uploaded_file.seek(0)  # Reset again for later use
+            # Use comprehensive file validator
+            validation_result = file_validator.validate_file(
+                uploaded_file, 
+                uploaded_file.name
+            )
+            return {"valid": True, "error": None, "details": validation_result}
+            
         except Exception as e:
+            # Handle validation errors
+            error_response = error_handler.handle_error(e)
+            error_info = error_response['error']
+            
             return {
                 "valid": False,
-                "error": f"Invalid image file: {str(e)}"
+                "error": error_info['message'],
+                "recovery_suggestions": error_info.get('recovery_suggestions', [])
             }
-        
-        return {"valid": True, "error": None}
     
     def _display_file_info(self, uploaded_file):
         """Display information about the uploaded file."""
@@ -149,6 +152,8 @@ class ReceiptUploadInterface:
         progress_bar = st.progress(0)
         status_text = st.empty()
         
+        temp_file_path = None
+        
         try:
             # Step 1: Save uploaded file temporarily
             status_text.text("💾 Saving uploaded file...")
@@ -181,9 +186,20 @@ class ReceiptUploadInterface:
             
             # Clean up temp file
             self._cleanup_temp_file(temp_file_path)
+            temp_file_path = None  # Mark as cleaned up
             
             # Display success message
-            st.success(f"Receipt processed successfully! Extracted {len(receipt.items)} items.")
+            success_msg = f"Receipt processed successfully! Extracted {len(receipt.items)} items."
+            if processed_data.get('processing_warnings'):
+                success_msg += f" (with {len(processed_data['processing_warnings'])} warnings)"
+            
+            st.success(success_msg)
+            
+            # Show warnings if any
+            if processed_data.get('processing_warnings'):
+                with st.expander("⚠️ Processing Warnings"):
+                    for warning in processed_data['processing_warnings']:
+                        st.warning(warning)
             
             return {
                 "receipt": receipt,
@@ -191,39 +207,47 @@ class ReceiptUploadInterface:
             }
             
         except Exception as e:
-            error_msg = str(e)
+            # Handle errors with comprehensive error handling
+            error_response = error_handler.handle_error(
+                e, 
+                context={'file_name': uploaded_file.name, 'file_size': uploaded_file.size}
+            )
+            error_info = error_response['error']
             
-            # Provide specific guidance for common errors
-            if "tesseract" in error_msg.lower():
-                st.error("❌ Tesseract OCR is not installed or not found in PATH")
-                
-                with st.expander("🔧 How to Fix This"):
-                    st.write("**Tesseract OCR is required for text extraction from images.**")
-                    st.write("")
-                    st.write("**Windows:**")
-                    st.write("1. Download from: https://github.com/UB-Mannheim/tesseract/wiki")
-                    st.write("2. Install to default location")
-                    st.write("3. Make sure 'Add to PATH' is checked during installation")
-                    st.write("")
-                    st.write("**Alternative: Set explicit path in .env file:**")
-                    st.code('TESSERACT_CMD=C:\\Program Files\\Tesseract-OCR\\tesseract.exe')
-                    st.write("")
-                    st.write("**macOS:** `brew install tesseract`")
-                    st.write("**Linux:** `sudo apt install tesseract-ocr`")
-                    
-                    if st.button("📖 View Full Installation Guide"):
-                        st.info("Check the INSTALLATION.md file in the project root for detailed instructions.")
+            # Display error with category-specific styling
+            if error_info['category'] == 'ocr':
+                st.error(f"🔍 OCR Error: {error_info['message']}")
+            elif error_info['category'] == 'file_system':
+                st.error(f"📁 File Error: {error_info['message']}")
+            elif error_info['category'] == 'database':
+                st.error(f"💾 Database Error: {error_info['message']}")
             else:
-                st.error(f"❌ Error processing receipt: {error_msg}")
+                st.error(f"❌ Error: {error_info['message']}")
+            
+            # Show recovery suggestions
+            if error_info.get('recovery_suggestions'):
+                with st.expander("💡 How to Fix This"):
+                    for suggestion in error_info['recovery_suggestions']:
+                        st.write(f"• {suggestion}")
+            
+            # Show technical details for debugging
+            if st.checkbox("Show technical details", key="show_tech_details"):
+                with st.expander("🔧 Technical Details"):
+                    st.write(f"**Error Category:** {error_info['category']}")
+                    st.write(f"**Severity:** {error_info['severity']}")
+                    st.write(f"**Timestamp:** {error_info['timestamp']}")
+                    if error_response.get('technical_details'):
+                        st.json(error_response['technical_details'])
             
             status_text.text("❌ Processing failed")
             progress_bar.progress(0)
             
-            # Clean up temp file if it exists
-            if 'temp_file_path' in locals():
-                self._cleanup_temp_file(temp_file_path)
-            
             return None
+            
+        finally:
+            # Always clean up temp file
+            if temp_file_path:
+                self._cleanup_temp_file(temp_file_path)
     
     def _save_temp_file(self, uploaded_file) -> str:
         """Save uploaded file to temporary location for processing."""

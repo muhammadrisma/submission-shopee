@@ -1,1 +1,1 @@
-# Database package for data persistence and database operations
+# Database package

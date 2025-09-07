@@ -14,6 +14,13 @@ import re
 from datetime import datetime, date
 from decimal import Decimal
 import logging
+import os
+
+from utils.error_handling import (
+    error_handler, with_error_handling, with_retry,
+    OCRError, FileSystemError, ErrorCategory, ErrorSeverity
+)
+from utils.validation import file_validator, receipt_validator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +31,15 @@ class ImagePreprocessor:
     """Handles image preprocessing for better OCR accuracy."""
     
     @staticmethod
+    @with_error_handling(
+        category=ErrorCategory.OCR,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Check if the image file exists and is readable",
+            "Verify the image format is supported",
+            "Try with a different image"
+        ]
+    )
     def preprocess_image(image_path: str) -> np.ndarray:
         """
         Preprocess receipt image for better OCR accuracy.
@@ -34,11 +50,55 @@ class ImagePreprocessor:
         Returns:
             Preprocessed image as numpy array
         """
+        # Validate file exists
+        if not os.path.exists(image_path):
+            raise FileSystemError(
+                message=f"Image file not found: {image_path}",
+                file_path=image_path,
+                user_message="Image file not found",
+                recovery_suggestions=[
+                    "Check if the file was uploaded correctly",
+                    "Try uploading the image again"
+                ]
+            )
+        
+        # Validate file is readable
+        if not os.access(image_path, os.R_OK):
+            raise FileSystemError(
+                message=f"Cannot read image file: {image_path}",
+                file_path=image_path,
+                user_message="Cannot access image file",
+                recovery_suggestions=[
+                    "Check file permissions",
+                    "Try uploading the image again"
+                ]
+            )
+        
         try:
             # Read image
             image = cv2.imread(image_path)
             if image is None:
-                raise ValueError(f"Could not load image from {image_path}")
+                raise OCRError(
+                    message=f"Could not load image from {image_path}",
+                    user_message="Invalid or corrupted image file",
+                    recovery_suggestions=[
+                        "Check if the image file is corrupted",
+                        "Try with a different image format",
+                        "Re-upload the image"
+                    ]
+                )
+            
+            # Validate image dimensions
+            height, width = image.shape[:2]
+            if height < 50 or width < 50:
+                raise OCRError(
+                    message=f"Image too small: {width}x{height}",
+                    user_message="Image is too small for processing",
+                    recovery_suggestions=[
+                        "Use a higher resolution image",
+                        "Ensure image is at least 50x50 pixels"
+                    ]
+                )
             
             # Convert to grayscale
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -55,9 +115,20 @@ class ImagePreprocessor:
             logger.info(f"Successfully preprocessed image: {image_path}")
             return cleaned
             
-        except Exception as e:
-            logger.error(f"Error preprocessing image {image_path}: {str(e)}")
+        except OCRError:
             raise
+        except FileSystemError:
+            raise
+        except Exception as e:
+            raise OCRError(
+                message=f"Error preprocessing image {image_path}: {str(e)}",
+                user_message="Failed to process image",
+                recovery_suggestions=[
+                    "Try with a different image",
+                    "Check if the image is corrupted",
+                    "Ensure the image is a valid format"
+                ]
+            )
     
     @staticmethod
     def _reduce_noise(image: np.ndarray) -> np.ndarray:
@@ -105,6 +176,16 @@ class OCRService:
         # Configure Tesseract for receipt processing
         self.config = '--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,/$-: '
     
+    @with_retry(max_retries=2, retry_on=(pytesseract.TesseractError,))
+    @with_error_handling(
+        category=ErrorCategory.OCR,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Check if Tesseract OCR is installed",
+            "Try with a clearer image",
+            "Verify image preprocessing was successful"
+        ]
+    )
     def extract_text(self, image: np.ndarray) -> str:
         """
         Extract text from preprocessed image using OCR.
@@ -115,12 +196,49 @@ class OCRService:
         Returns:
             Extracted text as string
         """
+        # Validate input image
+        if image is None or image.size == 0:
+            raise OCRError(
+                message="Empty or invalid image provided for OCR",
+                user_message="Invalid image for text extraction",
+                recovery_suggestions=[
+                    "Check image preprocessing",
+                    "Try with a different image"
+                ]
+            )
+        
         try:
+            # Check if Tesseract is available
+            try:
+                pytesseract.get_tesseract_version()
+            except pytesseract.TesseractNotFoundError:
+                raise OCRError(
+                    message="Tesseract OCR not found",
+                    user_message="OCR software not installed",
+                    recovery_suggestions=[
+                        "Install Tesseract OCR on your system",
+                        "Add Tesseract to your system PATH",
+                        "Set TESSERACT_CMD in your .env file"
+                    ]
+                )
+            
             # Convert numpy array to PIL Image for pytesseract
             pil_image = Image.fromarray(image)
             
             # Extract text using Tesseract
             text = pytesseract.image_to_string(pil_image, config=self.config)
+            
+            # Validate extracted text
+            if not text or not text.strip():
+                raise OCRError(
+                    message="No text extracted from image",
+                    user_message="Could not extract text from image",
+                    recovery_suggestions=[
+                        "Try with a clearer image",
+                        "Ensure the image contains readable text",
+                        "Check image quality and resolution"
+                    ]
+                )
             
             # Clean up extracted text
             cleaned_text = self._clean_text(text)
@@ -128,9 +246,28 @@ class OCRService:
             logger.info(f"Successfully extracted text, length: {len(cleaned_text)} characters")
             return cleaned_text
             
-        except Exception as e:
-            logger.error(f"Error extracting text from image: {str(e)}")
+        except OCRError:
             raise
+        except pytesseract.TesseractError as e:
+            raise OCRError(
+                message=f"Tesseract OCR error: {str(e)}",
+                user_message="Text extraction failed",
+                recovery_suggestions=[
+                    "Check if Tesseract is properly installed",
+                    "Try with a different image",
+                    "Verify image quality"
+                ]
+            )
+        except Exception as e:
+            raise OCRError(
+                message=f"Error extracting text from image: {str(e)}",
+                user_message="Text extraction failed",
+                recovery_suggestions=[
+                    "Try with a different image",
+                    "Check OCR configuration",
+                    "Verify image format"
+                ]
+            )
     
     def _clean_text(self, text: str) -> str:
         """Clean up extracted text by removing excessive whitespace and noise."""
@@ -190,6 +327,15 @@ class ReceiptParser:
             r'(?i)total[:\s]*\$?(\d+\.\d{2})',  # Fallback to any total
         ]
     
+    @with_error_handling(
+        category=ErrorCategory.OCR,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Try with a clearer receipt image",
+            "Check if the receipt text is readable",
+            "Manually verify extracted data"
+        ]
+    )
     def parse_receipt(self, text: str) -> Dict:
         """
         Parse receipt text to extract structured data.
@@ -200,6 +346,17 @@ class ReceiptParser:
         Returns:
             Dictionary containing parsed receipt data
         """
+        # Validate input text
+        if not text or not text.strip():
+            raise OCRError(
+                message="Empty text provided for parsing",
+                user_message="No text to parse",
+                recovery_suggestions=[
+                    "Check OCR text extraction",
+                    "Try with a clearer image"
+                ]
+            )
+        
         try:
             parsed_data = {
                 'store_name': self._extract_store_name(text),
@@ -209,14 +366,40 @@ class ReceiptParser:
                 'raw_text': text
             }
             
+            # Validate parsed data
+            if not parsed_data['items']:
+                logger.warning("No items extracted from receipt")
+                # Don't raise error, as this might be normal for some receipts
+            
+            if parsed_data['total_amount'] == 0.0 and parsed_data['items']:
+                logger.warning("Total amount is zero but items were found")
+            
+            # Validate using receipt validator
+            try:
+                validated_data = receipt_validator.validate_receipt_data(parsed_data)
+                # Merge validated data back
+                parsed_data.update(validated_data)
+            except Exception as validation_error:
+                logger.warning(f"Receipt validation warning: {validation_error}")
+                # Continue with unvalidated data but log the warning
+            
             logger.info(f"Successfully parsed receipt: {parsed_data['store_name']}, "
                        f"{len(parsed_data['items'])} items")
             
             return parsed_data
             
-        except Exception as e:
-            logger.error(f"Error parsing receipt text: {str(e)}")
+        except OCRError:
             raise
+        except Exception as e:
+            raise OCRError(
+                message=f"Error parsing receipt text: {str(e)}",
+                user_message="Failed to parse receipt data",
+                recovery_suggestions=[
+                    "Try with a clearer receipt image",
+                    "Check if the receipt format is supported",
+                    "Manually verify the receipt content"
+                ]
+            )
     
     def _extract_store_name(self, text: str) -> Optional[str]:
         """Extract store name from receipt text."""
@@ -501,6 +684,15 @@ class ComputerVisionService:
         self.ocr_service = OCRService()
         self.parser = ReceiptParser()
     
+    @with_error_handling(
+        category=ErrorCategory.OCR,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Check if the image file is valid",
+            "Try with a different image",
+            "Ensure OCR dependencies are installed"
+        ]
+    )
     def process_receipt(self, image_path: str) -> Dict:
         """
         Process a receipt image end-to-end.
@@ -511,25 +703,71 @@ class ComputerVisionService:
         Returns:
             Dictionary containing all extracted receipt data
         """
+        logger.info(f"Starting receipt processing for: {image_path}")
+        
+        # Validate image file first
+        if not os.path.exists(image_path):
+            raise FileSystemError(
+                message=f"Image file not found: {image_path}",
+                file_path=image_path,
+                user_message="Image file not found",
+                recovery_suggestions=[
+                    "Check if the file was uploaded correctly",
+                    "Try uploading the image again"
+                ]
+            )
+        
         try:
-            logger.info(f"Starting receipt processing for: {image_path}")
-            
             # Step 1: Preprocess image
+            logger.info("Step 1: Preprocessing image...")
             preprocessed_image = self.preprocessor.preprocess_image(image_path)
             
             # Step 2: Extract text using OCR
+            logger.info("Step 2: Extracting text...")
             extracted_text = self.ocr_service.extract_text(preprocessed_image)
             
             # Step 3: Parse structured data
+            logger.info("Step 3: Parsing receipt data...")
             parsed_data = self.parser.parse_receipt(extracted_text)
             
             # Add processing metadata
             parsed_data['image_path'] = image_path
             parsed_data['processing_timestamp'] = datetime.now()
             
+            # Final validation
+            self._validate_processing_result(parsed_data)
+            
             logger.info(f"Successfully processed receipt: {image_path}")
             return parsed_data
             
-        except Exception as e:
-            logger.error(f"Error processing receipt {image_path}: {str(e)}")
+        except (OCRError, FileSystemError):
             raise
+        except Exception as e:
+            raise OCRError(
+                message=f"Error processing receipt {image_path}: {str(e)}",
+                user_message="Receipt processing failed",
+                recovery_suggestions=[
+                    "Try with a different image",
+                    "Check image quality and format",
+                    "Ensure all dependencies are installed"
+                ]
+            )
+    
+    def _validate_processing_result(self, parsed_data: Dict):
+        """Validate the final processing result."""
+        issues = []
+        
+        # Check for missing critical data
+        if not parsed_data.get('store_name') or parsed_data['store_name'] == 'Unknown Store':
+            issues.append("Store name could not be determined")
+        
+        if not parsed_data.get('items'):
+            issues.append("No items were extracted")
+        
+        if parsed_data.get('total_amount', 0) == 0:
+            issues.append("Total amount is zero")
+        
+        # Log issues as warnings (don't fail processing)
+        if issues:
+            logger.warning(f"Processing completed with issues: {', '.join(issues)}")
+            parsed_data['processing_warnings'] = issues

@@ -1,1 +1,1 @@
-# Tests package for Food Receipt Analyzer
+# Tests package

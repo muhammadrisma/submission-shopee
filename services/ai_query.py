@@ -9,11 +9,18 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Dict, List, Optional, Any, Tuple
 import requests
+import time
 
 from config import config
 from database.service import db_service
 from models.receipt import Receipt, ReceiptItem
 from services.vector_db import vector_db
+from utils.error_handling import (
+    error_handler, with_error_handling, with_retry,
+    NetworkError, AIServiceError, ConfigurationError,
+    ErrorCategory, ErrorSeverity
+)
+from utils.validation import text_validator
 
 
 class OpenRouterClient:
@@ -31,8 +38,44 @@ class OpenRouterClient:
             "X-Title": "Food Receipt Analyzer"
         }
     
+    @with_retry(
+        max_retries=3,
+        retry_on=(requests.exceptions.RequestException, requests.exceptions.Timeout),
+        base_delay=1.0
+    )
+    @with_error_handling(
+        category=ErrorCategory.AI_SERVICE,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Check your internet connection",
+            "Verify OpenRouter API key is valid",
+            "Try again in a few moments"
+        ]
+    )
     def chat_completion(self, messages: List[Dict[str, str]], max_tokens: int = 1000, temperature: float = 0.1) -> Dict[str, Any]:
         """Send a chat completion request to OpenRouter."""
+        # Validate API key
+        if not self.api_key:
+            raise ConfigurationError(
+                message="OpenRouter API key not configured",
+                user_message="AI service not configured",
+                recovery_suggestions=[
+                    "Set OPENROUTER_API_KEY in your .env file",
+                    "Get an API key from OpenRouter.ai"
+                ]
+            )
+        
+        # Validate messages
+        if not messages or not isinstance(messages, list):
+            raise AIServiceError(
+                message="Invalid messages format",
+                user_message="Invalid request format",
+                recovery_suggestions=[
+                    "Check message format",
+                    "Try rephrasing your question"
+                ]
+            )
+        
         payload = {
             "model": self.model,
             "messages": messages,
@@ -47,15 +90,104 @@ class OpenRouterClient:
                 json=payload,
                 timeout=30
             )
+            
+            # Handle HTTP errors
+            if response.status_code == 401:
+                raise AIServiceError(
+                    message="Invalid API key",
+                    user_message="API authentication failed",
+                    recovery_suggestions=[
+                        "Check your OpenRouter API key",
+                        "Verify the key is active and has credits"
+                    ]
+                )
+            elif response.status_code == 429:
+                raise AIServiceError(
+                    message="Rate limit exceeded",
+                    user_message="Too many requests",
+                    recovery_suggestions=[
+                        "Wait a moment before trying again",
+                        "Check your API usage limits"
+                    ]
+                )
+            elif response.status_code >= 500:
+                raise NetworkError(
+                    message=f"Server error: {response.status_code}",
+                    user_message="AI service temporarily unavailable",
+                    recovery_suggestions=[
+                        "Try again in a few minutes",
+                        "Check OpenRouter service status"
+                    ]
+                )
+            
             response.raise_for_status()
-            return response.json()
+            
+            # Parse response
+            try:
+                response_data = response.json()
+            except json.JSONDecodeError as e:
+                raise AIServiceError(
+                    message=f"Invalid JSON response: {str(e)}",
+                    user_message="Invalid response from AI service",
+                    recovery_suggestions=[
+                        "Try your request again",
+                        "Check if the service is working properly"
+                    ]
+                )
+            
+            # Validate response structure
+            if 'choices' not in response_data or not response_data['choices']:
+                raise AIServiceError(
+                    message="No choices in API response",
+                    user_message="Empty response from AI service",
+                    recovery_suggestions=[
+                        "Try rephrasing your question",
+                        "Check if the AI service is working"
+                    ]
+                )
+            
+            return response_data
         
+        except AIServiceError:
+            raise
+        except NetworkError:
+            raise
+        except requests.exceptions.Timeout:
+            raise NetworkError(
+                message="Request timeout",
+                user_message="AI service request timed out",
+                recovery_suggestions=[
+                    "Check your internet connection",
+                    "Try again with a shorter question"
+                ]
+            )
+        except requests.exceptions.ConnectionError:
+            raise NetworkError(
+                message="Connection error",
+                user_message="Cannot connect to AI service",
+                recovery_suggestions=[
+                    "Check your internet connection",
+                    "Verify OpenRouter service is available"
+                ]
+            )
         except requests.exceptions.RequestException as e:
-            raise Exception(f"OpenRouter API request failed: {e}")
-        except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse OpenRouter API response: {e}")
+            raise NetworkError(
+                message=f"Network request failed: {str(e)}",
+                user_message="Network error occurred",
+                recovery_suggestions=[
+                    "Check your internet connection",
+                    "Try again in a few moments"
+                ]
+            )
         except Exception as e:
-            raise Exception(f"OpenRouter API request failed: {e}")
+            raise AIServiceError(
+                message=f"Unexpected error: {str(e)}",
+                user_message="AI service error",
+                recovery_suggestions=[
+                    "Try your request again",
+                    "Contact support if the problem persists"
+                ]
+            )
 
 
 class QueryParser:
@@ -76,11 +208,22 @@ class QueryParser:
             'this month': lambda: self._get_month_range()
         }
     
+    @with_error_handling(
+        category=ErrorCategory.AI_SERVICE,
+        severity=ErrorSeverity.LOW,
+        recovery_suggestions=[
+            "Try rephrasing your question",
+            "Use simpler language",
+            "Check for typos"
+        ]
+    )
     def parse_query(self, query: str) -> Dict[str, Any]:
         """
         Parse natural language query and extract intent and parameters.
         Returns a dictionary with query type, parameters, and metadata.
         """
+        # Validate and clean query
+        query = text_validator.validate_query(query)
         query_lower = query.lower().strip()
         
         # Check for semantic search intent first
@@ -653,6 +796,15 @@ class AIQueryService:
         self.sql_generator = SQLQueryGenerator(db_service)
         self.response_formatter = ResponseFormatter(self.openrouter_client)
     
+    @with_error_handling(
+        category=ErrorCategory.AI_SERVICE,
+        severity=ErrorSeverity.MEDIUM,
+        recovery_suggestions=[
+            "Try rephrasing your question",
+            "Check if you have uploaded receipts",
+            "Use simpler language"
+        ]
+    )
     def process_query(self, query: str) -> Dict[str, Any]:
         """
         Process a natural language query and return a formatted response.
@@ -663,10 +815,12 @@ class AIQueryService:
         Returns:
             Dictionary containing the response and metadata
         """
-        import time
         start_time = time.time()
         
         try:
+            # Validate query first
+            query = text_validator.validate_query(query)
+            
             # Parse the query
             parsed_query = self.query_parser.parse_query(query)
             
@@ -692,13 +846,27 @@ class AIQueryService:
         except Exception as e:
             execution_time = time.time() - start_time
             
+            # Use error handler to get structured error response
+            error_response = error_handler.handle_error(e, context={'query': query})
+            
             return {
                 'query': query,
-                'error': str(e),
-                'formatted_response': f"I'm sorry, I encountered an error processing your query: {str(e)}",
+                'error': error_response['error'],
+                'formatted_response': self._format_error_response(e, query),
                 'execution_time': execution_time,
                 'success': False
             }
+    
+    def _format_error_response(self, error: Exception, query: str) -> str:
+        """Format error into user-friendly response."""
+        if isinstance(error, AIServiceError):
+            return f"I'm having trouble with the AI service: {error.user_message}"
+        elif isinstance(error, NetworkError):
+            return f"I'm having connection issues: {error.user_message}"
+        elif isinstance(error, ConfigurationError):
+            return f"Configuration issue: {error.user_message}"
+        else:
+            return f"I'm sorry, I encountered an error processing your query. Please try rephrasing your question or try again later."
     
     def get_query_suggestions(self) -> List[str]:
         """Get example queries that users can try."""

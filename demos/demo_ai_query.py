@@ -6,6 +6,13 @@ Tests natural language query processing without requiring API keys.
 
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from services.ai_query import QueryParser, SQLQueryGenerator, ResponseFormatter
 from models.receipt import Receipt, ReceiptItem
 from unittest.mock import Mock

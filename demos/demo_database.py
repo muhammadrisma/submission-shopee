@@ -4,6 +4,13 @@ Demonstration script for the Food Receipt Analyzer database functionality.
 Shows how to use the data models and database service.
 """
 
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
 from datetime import date, datetime
 from decimal import Decimal
 

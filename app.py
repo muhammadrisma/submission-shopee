@@ -22,6 +22,7 @@ from ui.upload_interface import upload_interface
 from ui.query_interface import query_interface
 from database.service import db_service
 from database.connection import db_manager
+from utils.error_handling import error_handler, ErrorCategory, ErrorSeverity
 
 
 class FoodReceiptAnalyzerApp:
@@ -494,11 +495,86 @@ class FoodReceiptAnalyzerApp:
     
     def render_error_boundary(self, error: Exception):
         """Render error boundary for unhandled exceptions."""
-        st.error("🚨 Application Error")
-        st.write("An unexpected error occurred:")
-        st.exception(error)
+        # Use error handler to get structured error information
+        error_response = error_handler.handle_error(
+            error, 
+            context={'page': st.session_state.get('current_page', 'unknown')}
+        )
+        error_info = error_response['error']
         
-        if st.button("🔄 Reload Application"):
+        # Display error with appropriate severity styling
+        if error_info['severity'] == 'critical':
+            st.error("🚨 Critical Application Error")
+        elif error_info['severity'] == 'high':
+            st.error("❌ Application Error")
+        else:
+            st.warning("⚠️ Application Issue")
+        
+        st.write(f"**Error:** {error_info['message']}")
+        
+        # Show recovery suggestions
+        if error_info.get('recovery_suggestions'):
+            st.write("**What you can try:**")
+            for suggestion in error_info['recovery_suggestions']:
+                st.write(f"• {suggestion}")
+        
+        # Action buttons
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🔄 Reload Application"):
+                st.rerun()
+        
+        with col2:
+            if st.button("🏠 Go to Home"):
+                st.session_state.current_page = 'upload'
+                st.rerun()
+        
+        with col3:
+            if st.button("📊 View Error Stats"):
+                self._show_error_statistics()
+        
+        # Technical details (collapsible)
+        with st.expander("🔧 Technical Details"):
+            st.write(f"**Category:** {error_info['category']}")
+            st.write(f"**Severity:** {error_info['severity']}")
+            st.write(f"**Timestamp:** {error_info['timestamp']}")
+            st.write(f"**Error Code:** {error_info.get('error_code', 'N/A')}")
+            
+            if error_response.get('technical_details'):
+                st.json(error_response['technical_details'])
+            
+            # Show full exception for debugging
+            if st.checkbox("Show full exception"):
+                st.exception(error)
+    
+    def _show_error_statistics(self):
+        """Show error statistics for monitoring."""
+        stats = error_handler.get_error_statistics()
+        
+        st.subheader("📈 Error Statistics")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.metric("Total Errors", stats['total_errors'])
+            
+            if stats['error_counts']:
+                st.write("**Error Types:**")
+                for error_type, count in stats['error_counts'].items():
+                    st.write(f"• {error_type}: {count}")
+        
+        with col2:
+            if stats['recent_errors']:
+                st.write("**Recent Errors:**")
+                for error in stats['recent_errors'][-5:]:  # Last 5
+                    st.write(f"• {error['category']}: {error['message'][:50]}...")
+        
+        # Clear error history button
+        if st.button("🗑️ Clear Error History"):
+            error_handler.error_counts.clear()
+            error_handler.last_errors.clear()
+            st.success("Error history cleared!")
             st.rerun()
     
     def run(self):
