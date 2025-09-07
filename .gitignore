@@ -1,0 +1,5 @@
+data/customers-2000000.zip
+.vscode
+.env
+__pycache__
+.kiro
