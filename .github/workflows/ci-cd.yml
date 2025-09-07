@@ -1,0 +1,175 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+        
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov flake8 black isort bandit safety
+        
+    - name: Code quality checks - Black formatting
+      run: black --check --diff .
+      
+    - name: Code quality checks - Import sorting
+      run: isort --check-only --diff .
+      
+    - name: Code quality checks - Linting
+      run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+    - name: Security scanning - Bandit
+      run: bandit -r . -f json -o bandit-report.json || true
+      
+    - name: Security scanning - Safety
+      run: safety check --json --output safety-report.json || true
+      
+    - name: Run tests with coverage
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term
+        
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Run container security scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy-verification:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: Install verification dependencies
+      run: |
+        pip install requests
+        
+    - name: Start test container
+      run: |
+        docker run --rm -d --name test-container \
+          -p 8501:8501 \
+          -e OPENROUTER_API_KEY=test-key \
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        
+    - name: Run deployment verification
+      run: |
+        python scripts/verify_deployment.py \
+          --url http://localhost:8501 \
+          --timeout 60 \
+          --exit-on-failure
+        
+    - name: Cleanup test container
+      if: always()
+      run: |
+        docker stop test-container || true
+        
+    - name: Deployment notification
+      if: success()
+      run: |
+        echo "✅ Container image successfully built and verified"
+        echo "📦 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+        echo "🚀 Ready for deployment"
+        echo ""
+        echo "## Quick Start"
+        echo "docker run -p 8501:8501 -e OPENROUTER_API_KEY=your_key ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
