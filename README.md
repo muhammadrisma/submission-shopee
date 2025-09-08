@@ -1,3 +1,19 @@
+# Engineering Knowledge AI Agent Test
+- **REST API vs MCP in AI**
+ REST API is standart protocol for software to talk to other app with simple request and response. MCPis more AI-focused, its designed to let AI agents share context, tools, and memory, not just pass data back and forth because in each function there are multiline command that also help ai more undestoodd what the function do.
+
+- **How they improve AI use cases**
+REST APIs let AI pull in real-world info, like connecting to databases, apps, services do simple CRUD etc. MCP makes the AI smarter in conversations by keeping track of context and integrating tools, so it can handle more complex and can help by integrate for example using claude for example to do interaction to other ai agent etc
+
+- **Ensuring the AI answers correctly**
+I'd combine testing and grounding. That means checking answers against our trusted knowledge base data, running evaluation metrics, and sometimes involving humans for RLHF, or even using ai agent to do some evaluation.
+
+- **Docker/Containerization in AI**
+With Docker, I can isolate the whole AI environment code, dependencies, libraries, into one container. That way, it runs the same on my laptop, a server, or even an edge device, making experiments and deployment much easier, and to prevent issues to run my program in other platform
+
+- **Fine-tuning an LLM from raw**
+It starts with preparing the right dataset, cleaning it, and tokenizing it. Then i need to do some research, evaluate and compare base model that i want to used base on my specific requirements , set up the fine-tuning method (like LoRA or full fine-tuning), choosing wether want to do qquantization aware training or post training quantization, and train it on GPUs. After training, I test how well it performs on benchmarks and adjust before deploying it
+
 # CSV Preprocessing
 - **csv_parser_clean.py**: "python scripts\csv_parser_clean.py"
 - **simple_chunking.py**: "scripts\simple_chunking.py"
